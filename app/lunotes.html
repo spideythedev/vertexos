@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lunotes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body { margin: 0; background: #050507; color: #e4e4e7; font-family: 'Inter', sans-serif; display: flex; height: 100vh; overflow: hidden; }
+        
+        /* SIDEBAR */
+        #sidebar { 
+            width: 280px; background: rgba(15, 15, 18, 0.9); border-right: 1px solid rgba(255,255,255,0.05); 
+            display: flex; flex-direction: column; z-index: 10;
+        }
+        
+        .sidebar-header { padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .search-box { 
+            width: 100%; background: #000; border: 1px solid rgba(255,255,255,0.1); color: white; 
+            padding: 8px 12px 8px 32px; border-radius: 8px; font-size: 12px; outline: none; margin-top: 12px;
+        }
+        .search-icon { position: absolute; left: 28px; top: 68px; width: 14px; height: 14px; color: #71717a; }
+
+        .note-list { flex: 1; overflow-y: auto; padding: 10px; }
+        .note-item { 
+            padding: 12px; border-radius: 8px; cursor: pointer; transition: 0.2s; 
+            border-left: 2px solid transparent; margin-bottom: 4px;
+        }
+        .note-item:hover { background: rgba(255,255,255,0.03); }
+        .note-item.active { background: rgba(59,130,246,0.1); border-left-color: #3b82f6; }
+        .note-title { font-size: 13px; font-weight: 600; color: #fff; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .note-date { font-size: 10px; color: #71717a; }
+
+        /* MAIN WORKSPACE */
+        #workspace { flex: 1; display: flex; flex-direction: column; background: #0a0a0c; }
+        
+        /* TOOLBAR */
+        .toolbar { 
+            height: 60px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; 
+            justify-content: space-between; padding: 0 24px; background: rgba(10, 10, 12, 0.8); backdrop-filter: blur(10px);
+        }
+        .title-input { 
+            background: transparent; border: none; color: #fff; font-size: 18px; font-weight: 600; 
+            outline: none; width: 300px; 
+        }
+        
+        .btn-icon { 
+            width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; 
+            color: #a1a1aa; cursor: pointer; transition: 0.2s; border: 1px solid transparent;
+        }
+        .btn-icon:hover { background: rgba(255,255,255,0.05); color: #fff; }
+        .btn-danger:hover { background: rgba(239,68,68,0.1); color: #ef4444; border-color: rgba(239,68,68,0.2); }
+
+        /* EDITOR & PREVIEW */
+        .split-view { flex: 1; display: flex; overflow: hidden; }
+        
+        #editor { 
+            flex: 1; background: transparent; color: #a1a1aa; padding: 24px; 
+            font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.6; 
+            border: none; border-right: 1px solid rgba(255,255,255,0.05); outline: none; resize: none;
+        }
+        #editor:focus { color: #e4e4e7; }
+        
+        #preview { 
+            flex: 1; padding: 24px; overflow-y: auto; background: #050507; 
+            font-family: 'Inter', sans-serif; font-size: 14px; line-height: 1.7; color: #d4d4d8;
+        }
+
+        /* MARKDOWN STYLING */
+        #preview h1 { font-size: 24px; font-weight: 700; color: #fff; margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; }
+        #preview h2 { font-size: 20px; font-weight: 600; color: #fff; margin-top: 24px; margin-bottom: 12px; }
+        #preview h3 { font-size: 16px; font-weight: 600; color: #fff; margin-top: 16px; margin-bottom: 8px; }
+        #preview p { margin-bottom: 16px; }
+        #preview ul { list-style-type: disc; padding-left: 24px; margin-bottom: 16px; }
+        #preview ol { list-style-type: decimal; padding-left: 24px; margin-bottom: 16px; }
+        #preview strong { color: #fff; font-weight: 600; }
+        #preview blockquote { border-left: 3px solid #3b82f6; padding-left: 16px; color: #a1a1aa; font-style: italic; margin-bottom: 16px; background: rgba(59,130,246,0.05); padding: 12px 16px; border-radius: 0 8px 8px 0; }
+        #preview code { background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #60a5fa; }
+        #preview pre { background: #000; padding: 16px; border-radius: 8px; overflow-x: auto; margin-bottom: 16px; border: 1px solid rgba(255,255,255,0.05); }
+        #preview pre code { background: transparent; padding: 0; color: #e4e4e7; }
+        
+        /* SCROLLBARS */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+
+        /* EMPTY STATE */
+        #empty-state { display: none; flex: 1; flex-direction: column; align-items: center; justify-content: center; background: #0a0a0c; color: #71717a; }
+        #empty-state.active { display: flex; }
+    </style>
+</head>
+<body>
+
+    <div id="sidebar">
+        <div class="sidebar-header relative">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2 text-blue-400 font-bold">
+                    <i data-lucide="book-open" class="w-5 h-5"></i>
+                    <span class="tracking-wide">Lunotes</span>
+                </div>
+                <div class="btn-icon" onclick="createNote()" title="New Note">
+                    <i data-lucide="edit" class="w-4 h-4"></i>
+                </div>
+            </div>
+            <i data-lucide="search" class="search-icon"></i>
+            <input type="text" id="search" class="search-box" placeholder="Search notes..." onkeyup="renderList()">
+        </div>
+        
+        <div class="note-list" id="note-list">
+            </div>
+    </div>
+
+    <div id="workspace" class="hidden">
+        <div class="toolbar">
+            <input type="text" id="note-title" class="title-input" placeholder="Note Title..." oninput="autoSave()">
+            
+            <div class="flex items-center gap-2">
+                <div class="text-[10px] text-gray-500 mr-4" id="word-count">0 words</div>
+                <div class="btn-icon" onclick="togglePreview()" title="Toggle Preview">
+                    <i data-lucide="layout" class="w-4 h-4"></i>
+                </div>
+                <div class="btn-icon btn-danger" onclick="deleteNote()" title="Delete Note">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="split-view">
+            <textarea id="editor" placeholder="Write in Markdown..." oninput="autoSave()"></textarea>
+            <div id="preview"></div>
+        </div>
+    </div>
+
+    <div id="empty-state" class="active">
+        <i data-lucide="file-signature" class="w-16 h-16 mb-4 text-zinc-800"></i>
+        <h2 class="text-xl font-semibold text-zinc-500 mb-2">No Note Selected</h2>
+        <p class="text-sm text-zinc-600 mb-6">Create a new note or select one from the sidebar.</p>
+        <button onclick="createNote()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold transition">Create New Note</button>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        // Configure Marked.js options
+        marked.setOptions({
+            breaks: true, // Convert \n to <br>
+            gfm: true     // GitHub Flavored Markdown
+        });
+
+        // --- STATE ---
+        let notes = JSON.parse(localStorage.getItem('lunotes_data')) || [
+            {
+                id: Date.now(),
+                title: 'Welcome to Lunotes',
+                content: '# Mastering Lunotes\n\nLunotes is a **Markdown-powered** workspace designed for speed and focus.\n\n### Features\n- ⚡ **Auto-saving:** Everything is saved instantly.\n- 🎨 **Live Preview:** See your formatting on the right.\n- 💻 **Code Blocks:** Perfect for developers.\n\n```javascript\nfunction helloWorld() {\n  console.log("Lucid OS is alive.");\n}\n```\n\n> "Clear your mind. Dump your thoughts here."\n\nEnjoy the ecosystem.',
+                updatedAt: new Date().toISOString()
+            }
+        ];
+        let currentNoteId = null;
+        let isPreviewVisible = true;
+
+        const listEl = document.getElementById('note-list');
+        const workspace = document.getElementById('workspace');
+        const emptyState = document.getElementById('empty-state');
+        const titleInput = document.getElementById('note-title');
+        const editor = document.getElementById('editor');
+        const preview = document.getElementById('preview');
+        const wordCount = document.getElementById('word-count');
+
+        // --- CORE FUNCTIONS ---
+        function saveToStorage() {
+            localStorage.setItem('lunotes_data', JSON.stringify(notes));
+        }
+
+        function renderList() {
+            const query = document.getElementById('search').value.toLowerCase();
+            listEl.innerHTML = '';
+            
+            // Sort by newest first
+            const sortedNotes = [...notes].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+
+            sortedNotes.forEach(note => {
+                if(query && !note.title.toLowerCase().includes(query) && !note.content.toLowerCase().includes(query)) return;
+
+                const div = document.createElement('div');
+                div.className = `note-item ${note.id === currentNoteId ? 'active' : ''}`;
+                
+                // Format Date
+                const dateObj = new Date(note.updatedAt);
+                const dateStr = dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' });
+
+                div.innerHTML = `
+                    <div class="note-title">${note.title || 'Untitled Note'}</div>
+                    <div class="note-date">${dateStr}</div>
+                `;
+                
+                div.onclick = () => loadNote(note.id);
+                listEl.appendChild(div);
+            });
+        }
+
+        function createNote() {
+            const newNote = {
+                id: Date.now(),
+                title: '',
+                content: '',
+                updatedAt: new Date().toISOString()
+            };
+            notes.push(newNote);
+            saveToStorage();
+            loadNote(newNote.id);
+            
+            // Focus title
+            setTimeout(() => titleInput.focus(), 50);
+        }
+
+        function loadNote(id) {
+            currentNoteId = id;
+            const note = notes.find(n => n.id === id);
+            
+            if (note) {
+                workspace.classList.remove('hidden');
+                emptyState.classList.remove('active');
+                
+                titleInput.value = note.title;
+                editor.value = note.content;
+                updatePreview();
+                renderList();
+            }
+        }
+
+        function autoSave() {
+            if (!currentNoteId) return;
+            
+            const noteIndex = notes.findIndex(n => n.id === currentNoteId);
+            if (noteIndex > -1) {
+                notes[noteIndex].title = titleInput.value;
+                notes[noteIndex].content = editor.value;
+                notes[noteIndex].updatedAt = new Date().toISOString();
+                
+                updatePreview();
+                saveToStorage();
+                renderList(); // Update sidebar titles/dates
+            }
+        }
+
+        function deleteNote() {
+            if (!currentNoteId) return;
+            
+            if (confirm("Delete this note permanently?")) {
+                notes = notes.filter(n => n.id !== currentNoteId);
+                saveToStorage();
+                currentNoteId = null;
+                
+                workspace.classList.add('hidden');
+                emptyState.classList.add('active');
+                renderList();
+            }
+        }
+
+        function updatePreview() {
+            const rawText = editor.value;
+            // Parse Markdown
+            preview.innerHTML = marked.parse(rawText);
+            
+            // Update Word Count
+            const words = rawText.trim().split(/\s+/).filter(w => w.length > 0).length;
+            wordCount.innerText = `${words} words`;
+        }
+
+        function togglePreview() {
+            isPreviewVisible = !isPreviewVisible;
+            if (isPreviewVisible) {
+                preview.style.display = 'block';
+                editor.style.borderRight = '1px solid rgba(255,255,255,0.05)';
+            } else {
+                preview.style.display = 'none';
+                editor.style.borderRight = 'none';
+            }
+        }
+
+        // --- INIT ---
+        renderList();
+        
+        // Handle Tab key in editor (insert spaces instead of moving focus)
+        editor.addEventListener('keydown', function(e) {
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                const start = this.selectionStart;
+                const end = this.selectionEnd;
+                // set textarea value to: text before caret + 2 spaces + text after caret
+                this.value = this.value.substring(0, start) + "  " + this.value.substring(end);
+                // put caret at right position again
+                this.selectionStart = this.selectionEnd = start + 2;
+                autoSave();
+            }
+        });
+
+    </script>
+</body>
+</html>
