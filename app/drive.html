@@ -3,290 +3,181 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lucid Drive</title>
+    <title>Lucid Bridge | Host Access</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
-        body { margin: 0; background: #0a0a0c; color: #fff; font-family: 'Inter', sans-serif; display: flex; height: 100vh; overflow: hidden; user-select: none; }
-        
-        /* SIDEBAR */
-        #sidebar { width: 200px; background: rgba(20, 20, 22, 0.8); border-right: 1px solid rgba(255,255,255,0.05); padding: 20px 10px; display: flex; flex-direction: column; gap: 4px; }
-        .nav-item { padding: 8px 12px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 500; color: #a1a1aa; transition: 0.2s; }
-        .nav-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
-        .nav-item.active { background: rgba(59,130,246,0.15); color: #3b82f6; }
-        
-        /* MAIN CONTENT */
-        #content { flex: 1; display: flex; flex-direction: column; background: #050507; position: relative; }
+        body { margin: 0; background: #050507; color: #fff; font-family: 'Inter', sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         
         /* HEADER */
-        #header { height: 60px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; padding: 0 24px; justify-content: space-between; }
-        .path-text { font-size: 14px; font-weight: 600; color: #e4e4e7; }
+        #header { height: 60px; background: rgba(20, 20, 22, 0.9); border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; }
         
-        /* FILE GRID */
-        #drive-area { flex: 1; padding: 24px; overflow-y: auto; display: flex; flex-wrap: wrap; gap: 16px; align-content: flex-start; }
+        /* ACTION BUTTONS */
+        .btn-real { background: #3b82f6; color: white; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; border: none; transition: 0.2s; box-shadow: 0 4px 10px rgba(59,130,246,0.2); }
+        .btn-real:hover { background: #2563eb; box-shadow: 0 6px 15px rgba(59,130,246,0.4); transform: translateY(-1px); }
+        .btn-real:active { transform: translateY(1px); }
         
-        .file-card { 
-            width: 100px; padding: 12px; border-radius: 12px; cursor: pointer; 
-            display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center;
-            border: 1px solid transparent; transition: 0.1s;
-        }
-        .file-card:hover { background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.1); }
-        .file-card.selected { background: rgba(59,130,246,0.2); border-color: #3b82f6; }
-        
-        .file-icon { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; }
-        .file-name { font-size: 11px; color: #d4d4d8; word-break: break-all; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-        
-        /* CONTEXT MENU */
-        #context-menu {
-            position: absolute; width: 180px; display: none; flex-direction: column;
-            background: rgba(25, 25, 30, 0.95); backdrop-filter: blur(20px);
-            border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-            border-radius: 8px; padding: 4px; z-index: 100;
-        }
-        .ctx-item {
-            padding: 8px 12px; font-size: 12px; border-radius: 4px; cursor: pointer;
-            display: flex; align-items: center; gap: 8px; color: #e4e4e7;
-        }
-        .ctx-item:hover { background: #3b82f6; color: white; }
+        .btn-save { background: #10b981; box-shadow: 0 4px 10px rgba(16,185,129,0.2); }
+        .btn-save:hover { background: #059669; box-shadow: 0 6px 15px rgba(16,185,129,0.4); }
+        .btn-save:disabled { background: #3f3f46; color: #a1a1aa; cursor: not-allowed; box-shadow: none; transform: none; }
 
-        /* EDITOR MODAL */
-        #editor-modal {
-            position: absolute; inset: 0; background: #0a0a0c; z-index: 200;
-            display: none; flex-direction: column;
-        }
-        #editor-modal.active { display: flex; }
+        /* EDITOR */
+        #editor-container { flex: 1; display: flex; flex-direction: column; background: #0a0a0c; position: relative; }
         
-        .editor-header { height: 50px; background: #121215; border-bottom: 1px solid #27272a; display: flex; items-center; justify-content: space-between; padding: 0 16px; }
-        #editor-title { background: transparent; border: none; color: white; font-size: 14px; font-weight: 600; outline: none; width: 300px; }
-        #editor-content { flex: 1; background: #050507; color: #e4e4e7; padding: 20px; font-family: 'JetBrains Mono', monospace; font-size: 13px; border: none; outline: none; resize: none; }
-        
-        .btn-action { background: #3b82f6; color: white; padding: 6px 16px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; }
-        .btn-action:hover { background: #2563eb; }
-        .btn-close { background: transparent; color: #a1a1aa; padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; border: 1px solid #27272a; transition: 0.2s; }
-        .btn-close:hover { background: #27272a; color: white; }
+        #file-info { padding: 10px 20px; background: #121215; border-bottom: 1px solid #27272a; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #a1a1aa; display: flex; align-items: center; gap: 10px; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #ef4444; }
+        .status-dot.connected { background: #10b981; box-shadow: 0 0 10px rgba(16,185,129,0.5); }
 
+        #editor { flex: 1; background: transparent; color: #e4e4e7; padding: 20px; font-family: 'JetBrains Mono', monospace; font-size: 14px; border: none; outline: none; resize: none; line-height: 1.6; }
+        
+        /* SPLASH SCREEN */
+        #splash { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #050507; z-index: 10; transition: 0.3s; }
+        #splash.hidden { opacity: 0; pointer-events: none; }
     </style>
 </head>
 <body>
 
-    <div id="sidebar">
-        <div class="px-3 py-2 mb-2">
-            <h2 class="text-[10px] font-bold text-gray-500 tracking-widest uppercase">Locations</h2>
+    <div id="header">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 bg-zinc-800 rounded flex items-center justify-center border border-zinc-700">
+                <i data-lucide="hard-drive" class="w-4 h-4 text-gray-300"></i>
+            </div>
+            <div>
+                <h1 class="text-sm font-bold tracking-wide">Host File Access</h1>
+                <p class="text-[10px] text-gray-500 uppercase tracking-widest">Real OS Bridge</p>
+            </div>
         </div>
-        <div class="nav-item active">
-            <i data-lucide="hard-drive" class="w-4 h-4 text-blue-400"></i> Local Disk (C:)
-        </div>
-        <div class="nav-item">
-            <i data-lucide="folder" class="w-4 h-4 text-yellow-500"></i> Documents
-        </div>
-        <div class="nav-item">
-            <i data-lucide="download" class="w-4 h-4 text-green-400"></i> Downloads
-        </div>
-        <div class="nav-item">
-            <i data-lucide="image" class="w-4 h-4 text-purple-400"></i> Pictures
-        </div>
-    </div>
-
-    <div id="content" oncontextmenu="showContextMenu(event)" onclick="handleClick(event)">
         
-        <div id="header">
-            <div class="path-text flex items-center gap-2">
-                <i data-lucide="chevron-right" class="w-4 h-4 text-gray-500"></i>
-                <span>Lucid / Root / Documents</span>
-            </div>
-            <div class="text-xs text-gray-500" id="file-count">0 items</div>
-        </div>
-
-        <div id="drive-area">
-            </div>
-
-        <div id="context-menu">
-            <div class="ctx-item" onclick="createNewFile()"><i data-lucide="file-plus" class="w-4 h-4"></i> New Text File</div>
-            <div class="ctx-item" onclick="refreshDrive()"><i data-lucide="refresh-cw" class="w-4 h-4"></i> Refresh</div>
-            <div class="h-px bg-white/10 my-1 mx-1"></div>
-            <div class="ctx-item text-red-400" id="ctx-delete" style="display: none;" onclick="deleteSelected()"><i data-lucide="trash-2" class="w-4 h-4"></i> Delete Selected</div>
+        <div class="flex gap-3">
+            <button class="btn-real" onclick="openFile()">
+                <i data-lucide="folder-open" class="w-4 h-4"></i> Open Local File
+            </button>
+            <button class="btn-real btn-save" id="save-btn" onclick="saveFile()" disabled>
+                <i data-lucide="save" class="w-4 h-4"></i> Save to Disk
+            </button>
         </div>
     </div>
 
-    <div id="editor-modal">
-        <div class="editor-header">
-            <div class="flex items-center gap-3">
-                <i data-lucide="file-text" class="w-4 h-4 text-blue-400"></i>
-                <input type="text" id="editor-title" placeholder="Filename.txt">
-            </div>
-            <div class="flex items-center gap-2">
-                <button class="btn-close" onclick="closeEditor()">Cancel</button>
-                <button class="btn-action" onclick="saveFile()">Save File</button>
-            </div>
+    <div id="editor-container">
+        <div id="splash">
+            <i data-lucide="file-terminal" class="w-16 h-16 text-zinc-700 mb-4"></i>
+            <h2 class="text-xl font-bold text-gray-300 mb-2">No File Loaded</h2>
+            <p class="text-sm text-gray-500 max-w-md text-center">Click "Open Local File" to grant Lucid OS permission to read and write to a real file on your physical hard drive.</p>
         </div>
-        <textarea id="editor-content" spellcheck="false" placeholder="Start typing..."></textarea>
+
+        <div id="file-info">
+            <div id="status-indicator" class="status-dot"></div>
+            <span id="file-path">Disconnected</span>
+        </div>
+        <textarea id="editor" spellcheck="false" oninput="markUnsaved()"></textarea>
     </div>
 
     <script>
         lucide.createIcons();
 
-        // --- VIRTUAL FILE SYSTEM LOGIC ---
-        let fs = JSON.parse(localStorage.getItem('lucid_drive_fs')) || [
-            { 
-                id: 1, 
-                name: "Welcome.txt", 
-                type: "text", 
-                content: "Welcome to your drive, SpydeY.\n\nThis is a persistent virtual file system. You can create, edit, and delete files here. Everything is saved directly to your browser's memory." 
-            }
-        ];
+        let fileHandle = null;
+        let isUnsaved = false;
 
-        let selectedFileId = null;
-        let editingFileId = null;
+        const splash = document.getElementById('splash');
+        const editor = document.getElementById('editor');
+        const filePathDisplay = document.getElementById('file-path');
+        const saveBtn = document.getElementById('save-btn');
+        const statusIndicator = document.getElementById('status-indicator');
 
-        const driveArea = document.getElementById('drive-area');
-        const contextMenu = document.getElementById('context-menu');
-        const editorModal = document.getElementById('editor-modal');
-
-        function saveFS() {
-            localStorage.setItem('lucid_drive_fs', JSON.stringify(fs));
-            renderDrive();
-        }
-
-        function renderDrive() {
-            driveArea.innerHTML = '';
-            
-            fs.forEach(file => {
-                const card = document.createElement('div');
-                card.className = `file-card ${selectedFileId === file.id ? 'selected' : ''}`;
-                card.id = `file-${file.id}`;
-                
-                // Icon based on type
-                let iconHTML = `<i data-lucide="file-text" class="w-10 h-10 text-blue-400"></i>`;
-                if(file.type === 'folder') iconHTML = `<i data-lucide="folder" class="w-10 h-10 text-yellow-500 fill-yellow-500/20"></i>`;
-
-                card.innerHTML = `
-                    <div class="file-icon">${iconHTML}</div>
-                    <div class="file-name">${file.name}</div>
-                `;
-
-                // Events
-                card.onclick = (e) => {
-                    e.stopPropagation();
-                    selectFile(file.id);
-                };
-                
-                card.ondblclick = (e) => {
-                    e.stopPropagation();
-                    openFile(file.id);
-                };
-
-                driveArea.appendChild(card);
-            });
-            
-            document.getElementById('file-count').innerText = `${fs.length} items`;
+        // Check if browser supports the real File System API
+        if (!window.showOpenFilePicker) {
+            splash.innerHTML = `
+                <i data-lucide="alert-triangle" class="w-16 h-16 text-red-500 mb-4"></i>
+                <h2 class="text-xl font-bold text-gray-300 mb-2">API Not Supported</h2>
+                <p class="text-sm text-gray-500 max-w-md text-center">Your browser does not support the File System Access API, or you are not running this on a local server (localhost) / HTTPS. Try opening this in Google Chrome or Edge via Live Server.</p>
+            `;
             lucide.createIcons();
         }
 
-        // --- INTERACTIONS ---
-        function selectFile(id) {
-            selectedFileId = id;
-            document.querySelectorAll('.file-card').forEach(c => c.classList.remove('selected'));
-            if(id) document.getElementById(`file-${id}`).classList.add('selected');
-        }
+        async function openFile() {
+            try {
+                // Open file picker dialog
+                const [handle] = await window.showOpenFilePicker({
+                    types: [
+                        {
+                            description: 'Text and Code Files',
+                            accept: {
+                                'text/*': ['.txt', '.html', '.css', '.js', '.json', '.md', '.py', '.cpp']
+                            }
+                        }
+                    ],
+                    excludeAcceptAllOption: false,
+                    multiple: false
+                });
+                
+                fileHandle = handle;
+                
+                // Get file contents
+                const file = await fileHandle.getFile();
+                const contents = await file.text();
+                
+                // Update UI
+                editor.value = contents;
+                filePathDisplay.innerText = `Connected: ${file.name}`;
+                statusIndicator.classList.add('connected');
+                splash.classList.add('hidden');
+                
+                saveBtn.disabled = true; // Disabled until they type something
+                isUnsaved = false;
 
-        function handleClick(e) {
-            // Click empty space = deselect and hide menu
-            selectFile(null);
-            contextMenu.style.display = 'none';
-        }
-
-        function showContextMenu(e) {
-            e.preventDefault();
-            // Did we right click a file?
-            const fileCard = e.target.closest('.file-card');
-            if (fileCard) {
-                const id = parseInt(fileCard.id.replace('file-', ''));
-                selectFile(id);
-                document.getElementById('ctx-delete').style.display = 'flex';
-            } else {
-                selectFile(null);
-                document.getElementById('ctx-delete').style.display = 'none';
-            }
-
-            contextMenu.style.display = 'flex';
-            
-            // Keep menu inside bounds
-            let x = e.clientX;
-            let y = e.clientY;
-            if (x + 180 > window.innerWidth) x = window.innerWidth - 180;
-            if (y + 150 > window.innerHeight) y = window.innerHeight - 150;
-            
-            contextMenu.style.left = `${x}px`;
-            contextMenu.style.top = `${y}px`;
-        }
-
-        // --- FILE OPERATIONS ---
-        function createNewFile() {
-            contextMenu.style.display = 'none';
-            const newFile = {
-                id: Date.now(),
-                name: "Untitled Document.txt",
-                type: "text",
-                content: ""
-            };
-            fs.push(newFile);
-            saveFS();
-            openFile(newFile.id); // Open immediately to edit
-        }
-
-        function deleteSelected() {
-            contextMenu.style.display = 'none';
-            if(selectedFileId) {
-                fs = fs.filter(f => f.id !== selectedFileId);
-                selectedFileId = null;
-                saveFS();
+            } catch (err) {
+                // User cancelled or error
+                console.error("File open failed:", err);
             }
         }
 
-        function refreshDrive() {
-            contextMenu.style.display = 'none';
-            driveArea.style.opacity = '0';
-            setTimeout(() => {
-                renderDrive();
-                driveArea.style.opacity = '1';
-            }, 200);
-        }
+        async function saveFile() {
+            if (!fileHandle) return;
 
-        // --- EDITOR LOGIC ---
-        function openFile(id) {
-            const file = fs.find(f => f.id === id);
-            if(file && file.type === 'text') {
-                editingFileId = id;
-                document.getElementById('editor-title').value = file.name;
-                document.getElementById('editor-content').value = file.content;
-                editorModal.classList.add('active');
-                contextMenu.style.display = 'none';
+            try {
+                // Request write permission
+                const writable = await fileHandle.createWritable();
+                
+                // Write the contents of the textarea to the real file
+                await writable.write(editor.value);
+                
+                // Close the file
+                await writable.close();
+                
+                // Update UI
+                isUnsaved = false;
+                saveBtn.disabled = true;
+                filePathDisplay.innerText = `Connected: ${fileHandle.name} (Saved)`;
+                
+                // Flash green
+                saveBtn.innerText = "Saved!";
+                setTimeout(() => {
+                    saveBtn.innerHTML = `<i data-lucide="save" class="w-4 h-4"></i> Save to Disk`;
+                    lucide.createIcons();
+                }, 2000);
+
+            } catch (err) {
+                console.error("Save failed:", err);
+                alert("Failed to save. Did you grant write permission?");
             }
         }
 
-        function closeEditor() {
-            editorModal.classList.remove('active');
-            editingFileId = null;
-        }
-
-        function saveFile() {
-            if(editingFileId) {
-                const fileIndex = fs.findIndex(f => f.id === editingFileId);
-                if(fileIndex > -1) {
-                    let newName = document.getElementById('editor-title').value.trim();
-                    if(!newName.endsWith('.txt')) newName += '.txt'; // Force extension
-                    
-                    fs[fileIndex].name = newName || "Untitled.txt";
-                    fs[fileIndex].content = document.getElementById('editor-content').value;
-                    saveFS();
-                }
+        function markUnsaved() {
+            if (!isUnsaved && fileHandle) {
+                isUnsaved = true;
+                saveBtn.disabled = false;
+                filePathDisplay.innerText = `Connected: ${fileHandle.name} * (Unsaved)`;
             }
-            closeEditor();
         }
 
-        // Init
-        renderDrive();
+        // Keyboard Shortcut: Ctrl/Cmd + S
+        window.addEventListener('keydown', e => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                if (!saveBtn.disabled) saveFile();
+            }
+        });
 
     </script>
 </body>
