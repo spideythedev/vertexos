@@ -20,7 +20,7 @@
         }
     </script>
     <style>
-        body { background: #000; color: #fff; height: 100vh; overflow: hidden; user-select: none; cursor: default; }
+        body { background: #000; color: #fff; height: 100vh; overflow: hidden; user-select: none; transition: cursor 0.3s; }
 
         /* WALLPAPER & OVERLAYS */
         #desktop {
@@ -41,7 +41,7 @@
 
         /* LUCID GLASS MATERIAL */
         .lucid-glass {
-            background: rgba(15, 15, 18, 0.55);
+            background: rgba(15, 15, 18, 0.65);
             backdrop-filter: blur(40px) saturate(180%);
             -webkit-backdrop-filter: blur(40px) saturate(180%);
             border: 1px solid var(--lucid-border);
@@ -51,7 +51,7 @@
         /* TOP MENU BAR */
         #topbar {
             position: fixed; top: 0; width: 100%; height: 32px; z-index: 50;
-            display: flex; justify-content: space-between; align-items: center; px-4;
+            display: flex; justify-content: space-between; align-items: center; padding: 0 16px;
             background: rgba(0,0,0,0.2); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255,255,255,0.05);
             font-size: 12px; font-weight: 500;
         }
@@ -135,15 +135,36 @@
         }
         #control-center.active { transform: translateY(0) scale(1); opacity: 1; pointer-events: auto; }
         
-        .cc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; mb-4; }
+        .cc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
         .cc-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 8px; cursor: pointer; transition: 0.2s; }
         .cc-card:hover { background: rgba(255,255,255,0.1); }
-        .cc-icon { w-8; h-8; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.1); transition: 0.2s; }
+        .cc-icon { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.1); transition: 0.2s; }
         .cc-card.active .cc-icon { background: #3b82f6; color: white; box-shadow: 0 0 15px rgba(59,130,246,0.5); }
         
-        .cc-slider { background: rgba(255,255,255,0.05); border-radius: 16px; padding: 12px 16px; display: flex; items-center; gap: 12px; margin-bottom: 12px; }
+        .cc-slider { background: rgba(255,255,255,0.05); border-radius: 16px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
         input[type=range] { flex: 1; height: 4px; background: rgba(255,255,255,0.2); border-radius: 2px; appearance: none; outline: none; }
         input[type=range]::-webkit-slider-thumb { appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #fff; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
+
+        /* CONTEXT MENU */
+        #context-menu {
+            position: absolute; width: 240px; display: none; flex-direction: column;
+            border-radius: 14px; padding: 6px; z-index: 9999;
+        }
+        .ctx-item {
+            padding: 10px 14px; font-size: 13px; font-weight: 500; border-radius: 8px; cursor: pointer;
+            display: flex; align-items: center; gap: 12px; transition: 0.1s; color: #e4e4e7;
+        }
+        .ctx-item:hover { background: #3b82f6; color: white; }
+
+        /* PERSONALIZATION MODAL */
+        #personalize-modal {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.95);
+            width: 450px; z-index: 10000; opacity: 0; pointer-events: none;
+            transition: 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+        }
+        #personalize-modal.active { opacity: 1; transform: translate(-50%, -50%) scale(1); pointer-events: auto; }
+        .p-input { width: 100%; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 10px; border-radius: 8px; outline: none; font-size: 13px; margin-top: 6px; }
+        .p-input:focus { border-color: #3b82f6; }
     </style>
 </head>
 <body>
@@ -155,7 +176,36 @@
         </div>
     </div>
 
-    <div id="desktop" onclick="handleDesktopClick(event)"></div>
+    <div id="desktop" onclick="handleDesktopClick(event)" oncontextmenu="openContextMenu(event)"></div>
+
+    <div id="context-menu" class="lucid-glass">
+        <div class="ctx-item" onclick="refreshKernel()"><i data-lucide="refresh-cw" class="w-4 h-4"></i> Refresh Kernel</div>
+        <div class="h-px bg-white/10 my-1 mx-2"></div>
+        <div class="ctx-item" onclick="openPersonalize()"><i data-lucide="image" class="w-4 h-4"></i> Personalize The Screen</div>
+        <div class="ctx-item" onclick="openFullscreen()"><i data-lucide="monitor" class="w-4 h-4"></i> Enter Fullscreen</div>
+    </div>
+
+    <div id="personalize-modal" class="lucid-glass rounded-2xl p-6 shadow-2xl">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-lg font-bold">Personalize The Screen</h2>
+            <i data-lucide="x" class="w-5 h-5 cursor-pointer hover:text-red-400 transition" onclick="closePersonalize()"></i>
+        </div>
+        
+        <div class="mb-5">
+            <label class="text-xs text-gray-400 font-bold uppercase tracking-wide">Wallpaper URL (PNG/JPG)</label>
+            <input type="text" id="inp-wall" class="p-input" placeholder="https://example.com/image.jpg">
+        </div>
+        
+        <div class="mb-6">
+            <label class="text-xs text-gray-400 font-bold uppercase tracking-wide">Custom Cursor URL (PNG/JPG)</label>
+            <input type="text" id="inp-cursor" class="p-input" placeholder="https://example.com/cursor.png">
+        </div>
+
+        <div class="flex justify-end gap-3">
+            <button class="px-4 py-2 rounded-lg text-sm font-bold bg-white/5 hover:bg-white/10 transition" onclick="resetPersonalize()">Reset Default</button>
+            <button class="px-4 py-2 rounded-lg text-sm font-bold bg-blue-600 hover:bg-blue-500 transition shadow-[0_0_15px_rgba(59,130,246,0.5)]" onclick="applyPersonalize()">Apply Changes</button>
+        </div>
+    </div>
 
     <div id="desktop-widget">
         <div id="dw-time">12:00</div>
@@ -167,7 +217,7 @@
             <div class="cursor-pointer hover:text-blue-400 transition flex items-center gap-1 font-bold" onclick="showToast('Lucid OS Enterprise')">
                 <i data-lucide="droplet" class="w-3 h-3"></i> LUCID
             </div>
-            <div class="cursor-pointer hover:text-gray-300 transition" onclick="launch('studio', 'Vertex Studio', 'vertex-studio.html', 1100, 700)">Developer</div>
+            <div class="cursor-pointer hover:text-gray-300 transition" onclick="openPersonalize()">Edit</div>
             <div class="cursor-pointer hover:text-gray-300 transition">View</div>
             <div class="cursor-pointer hover:text-gray-300 transition">Help</div>
         </div>
@@ -230,7 +280,7 @@
         </div>
         
         <div class="app-grid" id="app-grid-container">
-            <div class="app-item" data-name="settings" onclick="launch('settings', 'System Preferences', 'app/settings.html', 700, 500)">
+            <div class="app-item" data-name="settings" onclick="launch('settings', 'Settings', 'app/settings.html', 700, 500)">
                 <div class="app-icon-lg bg-gray-600"><i data-lucide="settings-2"></i></div>
                 <span class="app-label">Settings</span>
             </div>
@@ -238,11 +288,6 @@
             <div class="app-item" data-name="aura" onclick="launch('aura', 'AURA Studio', 'app/aura.html', 800, 600)">
                 <div class="app-icon-lg bg-gradient-to-tr from-cyan-500 to-blue-600 shadow-[0_0_20px_rgba(59,130,246,0.4)]"><i data-lucide="waves"></i></div>
                 <span class="app-label">AURA</span>
-            </div>
-
-            <div class="app-item" data-name="studio" onclick="launch('studio', 'Vertex Studio', 'vertex-studio.html', 1100, 700)">
-                <div class="app-icon-lg bg-zinc-800 border border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.4)]"><i data-lucide="code-2" class="text-purple-400"></i></div>
-                <span class="app-label">Dev Studio</span>
             </div>
 
             <div class="app-item" data-name="passforge" onclick="launch('passforge', 'PassForge', 'app/passforge.html', 400, 600)">
@@ -315,15 +360,16 @@
     <div id="toast-area"></div>
 
     <script>
-        // --- ⚙️ SYSTEM CONFIGURATION ---
+        // --- ⚙️ SYSTEM CONFIGURATION & PERSONALIZATION ---
         const DEFAULT_CONFIG = {
-            wall: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop" // Abstract lucid flow
+            wall: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop",
+            cursor: "auto"
         };
 
         // --- SYSTEM INIT ---
         window.onload = () => {
             lucide.createIcons();
-            document.getElementById('desktop').style.backgroundImage = `url('${DEFAULT_CONFIG.wall}')`;
+            loadPersonalization();
             startClock();
             
             // Boot Animation
@@ -342,6 +388,92 @@
             }, 2000);
         };
 
+        // --- PERSONALIZATION ENGINE ---
+        function loadPersonalization() {
+            const savedWall = localStorage.getItem('lucid_wall') || DEFAULT_CONFIG.wall;
+            const savedCursor = localStorage.getItem('lucid_cursor') || DEFAULT_CONFIG.cursor;
+            
+            document.getElementById('desktop').style.backgroundImage = `url('${savedWall}')`;
+            document.getElementById('inp-wall').value = savedWall === DEFAULT_CONFIG.wall ? '' : savedWall;
+            
+            if(savedCursor !== "auto") {
+                document.body.style.cursor = `url('${savedCursor}'), auto`;
+                document.getElementById('inp-cursor').value = savedCursor;
+            } else {
+                document.body.style.cursor = "auto";
+                document.getElementById('inp-cursor').value = '';
+            }
+        }
+
+        function applyPersonalize() {
+            const wallUrl = document.getElementById('inp-wall').value.trim();
+            const cursorUrl = document.getElementById('inp-cursor').value.trim();
+
+            if(wallUrl) {
+                localStorage.setItem('lucid_wall', wallUrl);
+                document.getElementById('desktop').style.backgroundImage = `url('${wallUrl}')`;
+            }
+            if(cursorUrl) {
+                localStorage.setItem('lucid_cursor', cursorUrl);
+                document.body.style.cursor = `url('${cursorUrl}'), auto`;
+            }
+            
+            closePersonalize();
+            showToast('Screen Personalized Successfully', 'image');
+        }
+
+        function resetPersonalize() {
+            localStorage.removeItem('lucid_wall');
+            localStorage.removeItem('lucid_cursor');
+            loadPersonalization();
+            closePersonalize();
+            showToast('Restored Default Theme', 'refresh-cw');
+        }
+
+        function openPersonalize() {
+            closeAllMenus();
+            document.getElementById('personalize-modal').classList.add('active');
+        }
+
+        function closePersonalize() {
+            document.getElementById('personalize-modal').classList.remove('active');
+        }
+
+        // --- CONTEXT MENU ---
+        function openContextMenu(e) {
+            e.preventDefault();
+            closeAllMenus();
+            const menu = document.getElementById('context-menu');
+            menu.style.display = 'flex';
+            
+            // Keep menu inside bounds
+            let x = e.pageX;
+            let y = e.pageY;
+            if (x + 240 > window.innerWidth) x = window.innerWidth - 250;
+            if (y + 150 > window.innerHeight) y = window.innerHeight - 160;
+            
+            menu.style.left = `${x}px`;
+            menu.style.top = `${y}px`;
+        }
+
+        function refreshKernel() {
+            document.getElementById('context-menu').style.display = 'none';
+            const desk = document.getElementById('desktop');
+            desk.style.transform = "scale(0.98)";
+            desk.style.opacity = "0.8";
+            setTimeout(() => {
+                desk.style.transform = "scale(1)";
+                desk.style.opacity = "1";
+                showToast('Kernel Refreshed', 'cpu');
+            }, 300);
+        }
+
+        function openFullscreen() {
+            document.getElementById('context-menu').style.display = 'none';
+            if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+            else if (document.exitFullscreen) document.exitFullscreen();
+        }
+
         // --- TIME & WIDGETS ---
         function startClock() {
             const update = () => {
@@ -358,13 +490,14 @@
         }
 
         // --- UI CONTROLS ---
-        function handleDesktopClick() {
-            closeAllMenus();
+        function handleDesktopClick(e) {
+            if(e.button === 0) closeAllMenus(); // Only close on left click
         }
 
         function closeAllMenus() {
             document.getElementById('launchpad').classList.remove('active');
             document.getElementById('control-center').classList.remove('active');
+            document.getElementById('context-menu').style.display = 'none';
             document.getElementById('desktop').classList.remove('blurred');
             document.getElementById('desktop-widget').style.opacity = '1';
         }
@@ -379,7 +512,7 @@
             if (!isActive) {
                 menu.classList.add('active');
                 desk.classList.add('blurred');
-                widget.style.opacity = '0'; // Hide widget to show apps clearly
+                widget.style.opacity = '0';
                 setTimeout(() => document.getElementById('app-search').focus(), 100);
             }
         }
@@ -473,7 +606,6 @@
             win.className = 'window lucid-glass pointer-events-auto';
             win.id = `win-${key}`;
             
-            // Center spawn slightly offset
             const x = Math.max(0, (window.innerWidth/2) - (w/2) + (Math.random()*40-20));
             const y = Math.max(40, (window.innerHeight/2) - (h/2) + (Math.random()*40-20));
 
@@ -573,7 +705,7 @@
                 win.dataset.x = win.style.left;
                 win.dataset.y = win.style.top;
                 win.style.width = '100%';
-                win.style.height = 'calc(100% - 32px)'; // Account for topbar
+                win.style.height = 'calc(100% - 32px)'; 
                 win.style.left = '0';
                 win.style.top = '32px';
                 win.style.borderRadius = "0";
@@ -602,7 +734,7 @@
             if(!isDragging) return;
             let x = e.clientX - offset.x;
             let y = e.clientY - offset.y;
-            if(y < 32) y = 32; // Prevent dragging under topbar
+            if(y < 32) y = 32; 
             dragWin.style.left = `${x}px`;
             dragWin.style.top = `${y}px`;
         }
