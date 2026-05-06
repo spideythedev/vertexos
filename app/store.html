@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lucid Store</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+    <style>
+        body { margin: 0; background: #050507; color: #fff; font-family: 'Inter', sans-serif; display: flex; height: 100vh; overflow: hidden; user-select: none; }
+        
+        /* SCROLLBARS */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; border: 2px solid #050507; }
+        ::-webkit-scrollbar-track { background: transparent; }
+
+        /* SIDEBAR */
+        #sidebar { 
+            width: 220px; background: rgba(10, 10, 12, 0.8); border-right: 1px solid rgba(255,255,255,0.05); 
+            display: flex; flex-direction: column; padding: 20px 10px; z-index: 20; backdrop-filter: blur(20px);
+        }
+        .nav-item { 
+            padding: 10px 16px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 12px;
+            font-size: 13px; font-weight: 500; color: #a1a1aa; transition: 0.2s; margin-bottom: 4px;
+        }
+        .nav-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
+        .nav-item.active { background: rgba(59,130,246,0.15); color: #3b82f6; font-weight: 600; }
+
+        /* MAIN AREA */
+        #main { flex: 1; display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; scroll-behavior: smooth; }
+        
+        /* HEADER */
+        .top-bar { 
+            position: sticky; top: 0; z-index: 10; padding: 16px 32px; background: rgba(5, 5, 7, 0.8); 
+            backdrop-filter: blur(15px); border-bottom: 1px solid rgba(255,255,255,0.05);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .search-box { 
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.05); border-radius: 20px;
+            padding: 8px 16px 8px 36px; color: white; outline: none; font-size: 13px; width: 300px; transition: 0.2s;
+        }
+        .search-box:focus { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); width: 350px; }
+
+        /* HERO BANNER */
+        .hero { 
+            margin: 24px 32px; height: 300px; border-radius: 20px; position: relative; overflow: hidden;
+            display: flex; align-items: flex-end; padding: 40px; box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            background: linear-gradient(45deg, #0f172a, #3b82f6);
+            cursor: pointer; transition: 0.3s;
+        }
+        .hero:hover { transform: scale(1.01); box-shadow: 0 30px 60px rgba(0,0,0,0.6); }
+        .hero-bg { position: absolute; inset: 0; background-image: url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2000&auto=format&fit=crop'); background-size: cover; background-position: center; opacity: 0.4; mix-blend-mode: overlay; pointer-events: none; }
+        .hero-content { position: relative; z-index: 1; max-width: 500px; }
+        
+        /* APP ROWS */
+        .section-title { font-size: 18px; font-weight: 600; margin: 0 32px 16px 32px; display: flex; justify-content: space-between; align-items: flex-end; }
+        .see-all { font-size: 12px; color: #3b82f6; cursor: pointer; font-weight: 500; }
+        .see-all:hover { text-decoration: underline; }
+        
+        .row-container { 
+            display: flex; gap: 16px; padding: 0 32px 32px 32px; overflow-x: auto; scroll-snap-type: x mandatory; 
+        }
+        
+        /* APP CARDS */
+        .app-card { 
+            min-width: 280px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); 
+            border-radius: 12px; padding: 16px; display: flex; gap: 16px; align-items: center; cursor: pointer;
+            transition: 0.2s; scroll-snap-align: start;
+        }
+        .app-card:hover { background: rgba(255,255,255,0.05); transform: translateY(-2px); border-color: rgba(255,255,255,0.1); }
+        
+        .app-icon { 
+            width: 64px; height: 64px; border-radius: 16px; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3); font-size: 32px; color: white; flex-shrink: 0;
+        }
+        .app-info { flex: 1; overflow: hidden; }
+        .app-title { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; }
+        .app-dev { font-size: 11px; color: #71717a; margin-bottom: 8px; }
+        .app-meta { font-size: 10px; color: #a1a1aa; display: flex; align-items: center; gap: 4px; }
+
+        .btn-get { 
+            background: rgba(255,255,255,0.1); color: white; padding: 6px 16px; border-radius: 20px; 
+            font-size: 12px; font-weight: 600; border: none; cursor: pointer; transition: 0.2s;
+        }
+        .btn-get:hover { background: rgba(255,255,255,0.2); }
+        .btn-open { background: #3b82f6; color: white; }
+        .btn-open:hover { background: #2563eb; }
+
+        /* APP DETAIL MODAL */
+        #app-modal {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px);
+            z-index: 100; display: none; justify-content: center; align-items: center; opacity: 0; transition: 0.3s;
+        }
+        #app-modal.active { display: flex; opacity: 1; }
+        .modal-content {
+            width: 800px; height: 600px; background: #0a0a0c; border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 24px; overflow: hidden; display: flex; flex-direction: column; position: relative;
+            transform: scale(0.95); transition: 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+        }
+        #app-modal.active .modal-content { transform: scale(1); }
+        
+        .modal-hero { height: 250px; background: #121215; position: relative; padding: 40px; display: flex; align-items: flex-end; gap: 30px; }
+        .modal-close { position: absolute; top: 20px; right: 20px; width: 32px; height: 32px; border-radius: 50%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; border: 1px solid rgba(255,255,255,0.1); transition: 0.2s; }
+        .modal-close:hover { background: rgba(255,255,255,0.2); }
+        
+        .modal-icon { width: 120px; height: 120px; border-radius: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; font-size: 50px; color: white; border: 1px solid rgba(255,255,255,0.1); transform: translateY(40px); }
+        
+        .modal-body { padding: 60px 40px 40px 40px; flex: 1; overflow-y: auto; }
+        .btn-large { padding: 12px 40px; border-radius: 30px; font-size: 14px; font-weight: 600; border: none; cursor: pointer; transition: 0.2s; position: relative; overflow: hidden; }
+        
+        /* DOWNLOAD PROGRESS */
+        .dl-progress { position: absolute; inset: 0; background: rgba(255,255,255,0.2); width: 0%; transition: width 0.1s linear; }
+
+        /* SCREENSHOTS */
+        .screenshot-track { display: flex; gap: 16px; margin-top: 24px; overflow-x: auto; padding-bottom: 16px; }
+        .screenshot { width: 300px; height: 168px; background: rgba(255,255,255,0.05); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: #333; }
+
+    </style>
+</head>
+<body>
+
+    <div id="sidebar">
+        <div class="px-4 py-4 mb-2 flex items-center gap-2 font-bold text-white tracking-wide">
+            <i data-lucide="shopping-bag" class="text-blue-400"></i> Lucid Store
+        </div>
+        
+        <div class="nav-item active"><i data-lucide="home" class="w-4 h-4"></i> Home</div>
+        <div class="nav-item"><i data-lucide="grid" class="w-4 h-4"></i> Apps</div>
+        <div class="nav-item"><i data-lucide="gamepad-2" class="w-4 h-4"></i> Games</div>
+        
+        <div class="mt-6 mb-2 px-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Library</div>
+        <div class="nav-item"><i data-lucide="download-cloud" class="w-4 h-4"></i> Updates</div>
+        <div class="nav-item"><i data-lucide="library" class="w-4 h-4"></i> Installed</div>
+        
+        <div class="mt-auto">
+            <div class="nav-item"><i data-lucide="settings" class="w-4 h-4"></i> Settings</div>
+        </div>
+    </div>
+
+    <div id="main">
+        <div class="top-bar">
+            <div class="relative">
+                <i data-lucide="search" class="w-4 h-4 text-gray-400 absolute left-3 top-2.5"></i>
+                <input type="text" class="search-box" placeholder="Search apps, games, movies...">
+            </div>
+            <div class="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-600 flex items-center justify-center text-xs font-bold">SP</div>
+        </div>
+
+        <div class="hero" onclick="openAppModal('studio')">
+            <div class="hero-bg"></div>
+            <div class="hero-content">
+                <div class="text-[10px] font-bold tracking-widest text-blue-300 uppercase mb-2">Featured Developer Tool</div>
+                <h1 class="text-4xl font-bold mb-2 text-white text-shadow-lg">Vertex Studio Pro</h1>
+                <p class="text-sm text-gray-200 mb-6 max-w-md">The ultimate HTML5 game engine and IDE built directly into the browser. Write, compile, and publish instantly.</p>
+                <button class="bg-white text-black px-6 py-2.5 rounded-full font-bold text-sm hover:bg-gray-200 transition" onclick="event.stopPropagation(); installApp('studio', this)">Get - Free</button>
+            </div>
+        </div>
+
+        <div class="section-title">
+            <span>Essential Creator Tools</span>
+            <span class="see-all">See All</span>
+        </div>
+        <div class="row-container" id="row-tools">
+            </div>
+
+        <div class="section-title">
+            <span>Top Free Games</span>
+            <span class="see-all">See All</span>
+        </div>
+        <div class="row-container" id="row-games">
+            </div>
+    </div>
+
+    <div id="app-modal" onclick="if(event.target === this) closeAppModal()">
+        <div class="modal-content">
+            <div class="modal-close" onclick="closeAppModal()"><i data-lucide="x" class="w-4 h-4"></i></div>
+            
+            <div class="modal-hero" id="modal-bg">
+                <div class="modal-icon" id="modal-icon"><i data-lucide="box"></i></div>
+                <div class="mb-4">
+                    <h2 class="text-3xl font-bold text-white mb-1" id="modal-title">App Title</h2>
+                    <p class="text-sm text-blue-400 font-medium" id="modal-dev">Developer Name</p>
+                </div>
+            </div>
+            
+            <div class="modal-body">
+                <div class="flex justify-between items-center mb-8 border-b border-white/10 pb-6">
+                    <div class="flex gap-8">
+                        <div>
+                            <div class="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1">Rating</div>
+                            <div class="text-lg font-bold flex items-center gap-1" id="modal-rating">4.9 <i data-lucide="star" class="w-4 h-4 text-yellow-500 fill-yellow-500"></i></div>
+                        </div>
+                        <div>
+                            <div class="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1">Category</div>
+                            <div class="text-sm font-medium mt-1" id="modal-category">Productivity</div>
+                        </div>
+                        <div>
+                            <div class="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1">Age</div>
+                            <div class="text-sm font-medium mt-1">Everyone</div>
+                        </div>
+                    </div>
+                    
+                    <button class="btn-large bg-blue-600 text-white hover:bg-blue-500" id="modal-btn" onclick="installModalApp()">
+                        <div class="dl-progress" id="modal-progress"></div>
+                        <span class="relative z-10" id="modal-btn-text">Get - Free</span>
+                    </button>
+                </div>
+                
+                <h3 class="text-lg font-bold mb-3">Description</h3>
+                <p class="text-sm text-gray-400 leading-relaxed" id="modal-desc">
+                    App description goes here...
+                </p>
+
+                <div class="screenshot-track">
+                    <div class="screenshot"><i data-lucide="image" class="w-8 h-8"></i></div>
+                    <div class="screenshot"><i data-lucide="image" class="w-8 h-8"></i></div>
+                    <div class="screenshot"><i data-lucide="image" class="w-8 h-8"></i></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        // --- STORE DATABASE ---
+        // Simulating installed state locally
+        let installedApps = JSON.parse(localStorage.getItem('lucid_store_installed')) || ['settings'];
+
+        const storeApps = {
+            'nexus': { id: 'nexus', name: 'Nexus API Client', dev: 'Vertex Creative', type: 'Developer Tools', rating: 4.9, icon: 'network', bg: 'bg-zinc-900', color: 'border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.3)]', iconColor: 'text-blue-400', desc: 'The ultimate native API client. Test GET, POST, PUT, and DELETE requests directly within Lucid OS. Features syntax highlighting, real network latency tracking, and request history.' },
+            'lunotes': { id: 'lunotes', name: 'Lunotes', dev: 'Vertex Creative', type: 'Productivity', rating: 4.8, icon: 'book-open', bg: 'bg-zinc-900', color: 'border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.3)]', iconColor: 'text-blue-400', desc: 'A distraction-free, Markdown-powered workspace. Split-pane live preview, auto-saving local storage, and high-performance text rendering.' },
+            'aura': { id: 'aura', name: 'AURA Studio', dev: 'Vertex Audio', type: 'Music', rating: 4.7, icon: 'waves', bg: 'bg-gradient-to-tr from-cyan-500 to-blue-600', color: 'shadow-[0_0_15px_rgba(59,130,246,0.4)]', iconColor: 'text-white', desc: 'A professional-grade, math-based audio synthesizer. Create beats, sequences, and visualize audio in real-time without external assets.' },
+            'studio': { id: 'studio', name: 'Vertex Studio Pro', dev: 'Vertex Creative', type: 'Developer Tools', rating: 5.0, icon: 'code-2', bg: 'bg-zinc-800', color: 'border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.4)]', iconColor: 'text-purple-400', desc: 'A complete IDE inside your browser. Write JavaScript games, execute them instantly on an HTML5 Canvas, and publish to your local OS storage.' },
+            
+            'defense': { id: 'defense', name: 'Cyber Defense', dev: 'Vertex Games', type: 'Action', rating: 4.5, icon: 'shield-alert', bg: 'bg-indigo-900', color: 'border-indigo-500/50', iconColor: 'text-indigo-400', desc: 'Defend the mainframe against relentless cyber attacks in this fast-paced arcade shooter.' },
+            'vortex': { id: 'vortex', name: 'Vortex Focus', dev: 'Vertex Games', type: 'Arcade', rating: 4.6, icon: 'hexagon', bg: 'bg-black', color: 'border-purple-500', iconColor: 'text-purple-400', desc: 'A hypnotic, high-speed rotation game designed to induce a pure flow state. Survive the collapsing walls.' },
+            'chroma': { id: 'chroma', name: 'Chroma Lab', dev: 'Vertex Games', type: 'Puzzle', rating: 4.3, icon: 'flask-conical', bg: 'bg-gradient-to-br from-indigo-500 to-purple-600', color: '', iconColor: 'text-white', desc: 'Mix colors, solve spatial puzzles, and unlock the spectrum in this relaxing laboratory.' }
+        };
+
+        const categories = {
+            tools: ['nexus', 'lunotes', 'aura', 'studio'],
+            games: ['defense', 'vortex', 'chroma']
+        };
+
+        // --- UI RENDERER ---
+        function renderRows() {
+            const renderAppCard = (appId) => {
+                const app = storeApps[appId];
+                const isInstalled = installedApps.includes(appId);
+                const btnClass = isInstalled ? 'btn-open' : 'btn-get';
+                const btnText = isInstalled ? 'Open' : 'Get';
+
+                return `
+                    <div class="app-card" onclick="openAppModal('${appId}')">
+                        <div class="app-icon ${app.bg} ${app.color}"><i data-lucide="${app.icon}" class="${app.iconColor}"></i></div>
+                        <div class="app-info">
+                            <div class="app-title">${app.name}</div>
+                            <div class="app-dev">${app.dev}</div>
+                            <div class="app-meta">${app.rating} <i data-lucide="star" class="w-3 h-3 text-yellow-500 fill-yellow-500"></i></div>
+                        </div>
+                        <button class="${btnClass} min-w-[70px]" id="btn-card-${appId}" onclick="event.stopPropagation(); installApp('${appId}', this)">${btnText}</button>
+                    </div>
+                `;
+            };
+
+            document.getElementById('row-tools').innerHTML = categories.tools.map(renderAppCard).join('');
+            document.getElementById('row-games').innerHTML = categories.games.map(renderAppCard).join('');
+            lucide.createIcons();
+        }
+
+        // --- MODAL LOGIC ---
+        let currentModalApp = null;
+
+        function openAppModal(appId) {
+            currentModalApp = storeApps[appId];
+            const app = currentModalApp;
+            const isInstalled = installedApps.includes(appId);
+
+            document.getElementById('modal-icon').className = `modal-icon ${app.bg} ${app.color}`;
+            document.getElementById('modal-icon').innerHTML = `<i data-lucide="${app.icon}" class="${app.iconColor} w-16 h-16"></i>`;
+            
+            // Set dynamic background header based on icon color
+            document.getElementById('modal-bg').style.background = app.bg.includes('gradient') ? 'linear-gradient(45deg, #121215, #1e1e24)' : '#121215';
+
+            document.getElementById('modal-title').innerText = app.name;
+            document.getElementById('modal-dev').innerText = app.dev;
+            document.getElementById('modal-rating').innerHTML = `${app.rating} <i data-lucide="star" class="w-4 h-4 text-yellow-500 fill-yellow-500"></i>`;
+            document.getElementById('modal-category').innerText = app.type;
+            document.getElementById('modal-desc').innerText = app.desc;
+
+            const btn = document.getElementById('modal-btn');
+            const btnText = document.getElementById('modal-btn-text');
+            const progress = document.getElementById('modal-progress');
+            
+            progress.style.width = '0%';
+            btn.className = 'btn-large ' + (isInstalled ? 'bg-zinc-800 text-white' : 'bg-blue-600 text-white hover:bg-blue-500');
+            btnText.innerText = isInstalled ? 'Open Application' : 'Get - Free';
+
+            document.getElementById('app-modal').classList.add('active');
+            lucide.createIcons();
+        }
+
+        function closeAppModal() {
+            document.getElementById('app-modal').classList.remove('active');
+        }
+
+        // --- INSTALLATION SIMULATION ---
+        function installModalApp() {
+            if(!currentModalApp) return;
+            const appId = currentModalApp.id;
+            const btn = document.getElementById('modal-btn');
+            const btnText = document.getElementById('modal-btn-text');
+            const progress = document.getElementById('modal-progress');
+
+            if (installedApps.includes(appId)) {
+                // If already installed, launch it in OS (Simulated here)
+                alert(`Launching ${currentModalApp.name} via OS Kernel...`);
+                return;
+            }
+
+            // Simulate Download
+            btnText.innerText = 'Pending...';
+            btn.classList.replace('hover:bg-blue-500', 'cursor-default');
+            
+            setTimeout(() => {
+                btnText.innerText = 'Downloading...';
+                progress.style.width = '100%';
+                progress.style.transition = 'width 1.5s linear';
+            }, 500);
+
+            setTimeout(() => {
+                btnText.innerText = 'Installing...';
+                progress.style.opacity = '0';
+            }, 2000);
+
+            setTimeout(() => {
+                // Done
+                installedApps.push(appId);
+                localStorage.setItem('lucid_store_installed', JSON.stringify(installedApps));
+                
+                btnText.innerText = 'Open Application';
+                btn.className = 'btn-large bg-zinc-800 text-white transition-all';
+                progress.style.width = '0%';
+                progress.style.opacity = '1';
+
+                // Update cards in background
+                renderRows();
+            }, 3000);
+        }
+
+        function installApp(appId, btnElement) {
+            if (installedApps.includes(appId)) {
+                alert(`Launching ${storeApps[appId].name}...`);
+                return;
+            }
+
+            btnElement.innerText = '...';
+            btnElement.disabled = true;
+
+            setTimeout(() => {
+                installedApps.push(appId);
+                localStorage.setItem('lucid_store_installed', JSON.stringify(installedApps));
+                
+                btnElement.className = 'btn-open min-w-[70px]';
+                btnElement.innerText = 'Open';
+                btnElement.disabled = false;
+            }, 2000);
+        }
+
+        // Init
+        renderRows();
+
+    </script>
+</body>
+</html>
