@@ -3,390 +3,673 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lucid OS | Verified Ecosystem</title>
+    <title>Lucid OS | Enterprise</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+                    colors: { lucid: { dark: '#0a0a0c', border: 'rgba(255,255,255,0.08)', highlight: '#3b82f6' } }
+                }
+            }
+        }
+    </script>
     <style>
-        body { background: #000; color: #fff; height: 100vh; overflow: hidden; user-select: none; font-family: 'Inter', sans-serif; }
+        body { background: #000; color: #fff; height: 100vh; overflow: hidden; user-select: none; transition: cursor 0.3s; }
 
-        /* WALLPAPER & GLASS */
-        #desktop-bg { position: absolute; inset: 0; background-image: url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop'); background-size: cover; background-position: center; z-index: 0; transition: filter 0.8s, transform 0.8s; }
-        .bg-blurred { filter: blur(30px) brightness(0.4) !important; transform: scale(1.05); }
-        .lucid-glass { background: rgba(15, 15, 18, 0.65); backdrop-filter: blur(40px) saturate(180%); border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
+        /* WALLPAPER & OVERLAYS */
+        #desktop {
+            position: absolute; inset: 0;
+            background-size: cover; background-position: center; z-index: 0;
+            transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1), filter 0.6s;
+        }
+        #desktop.blurred { transform: scale(1.03); filter: blur(25px) brightness(0.4); }
 
-        /* SCREENS */
-        .screen { position: absolute; inset: 0; display: none; z-index: 10; flex-direction: column; }
-        .active-screen { display: flex !important; }
+        /* DESKTOP WIDGET */
+        #desktop-widget {
+            position: absolute; top: 12%; left: 50%; transform: translateX(-50%);
+            display: flex; flex-direction: column; align-items: center; pointer-events: none;
+            text-shadow: 0 10px 30px rgba(0,0,0,0.8); z-index: 10; transition: opacity 0.3s;
+        }
+        #dw-time { font-size: 80px; font-weight: 300; letter-spacing: -2px; line-height: 1; }
+        #dw-date { font-size: 16px; font-weight: 500; color: rgba(255,255,255,0.8); margin-top: 10px; }
 
-        /* AUTH & FORMS */
-        .l-input { width: 100%; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 12px 16px; border-radius: 8px; outline: none; margin-bottom: 12px; transition: 0.2s; font-family: 'Inter', sans-serif; font-size: 13px; }
-        .l-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.2); }
-        .l-btn { width: 100%; background: #3b82f6; color: white; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; margin-bottom: 8px; }
-        .l-btn:hover { background: #2563eb; }
+        /* LUCID GLASS MATERIAL */
+        .lucid-glass {
+            background: rgba(15, 15, 18, 0.65);
+            backdrop-filter: blur(40px) saturate(180%);
+            -webkit-backdrop-filter: blur(40px) saturate(180%);
+            border: 1px solid var(--lucid-border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
 
-        /* OS UI */
-        #topbar { height: 32px; background: rgba(0,0,0,0.2); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center; padding: 0 16px; font-size: 12px; font-weight: 500; z-index: 50; }
-        #launchpad { position: absolute; inset: 0; z-index: 40; display: flex; flex-direction: column; align-items: center; padding-top: 8%; opacity: 0; pointer-events: none; transition: 0.4s; }
+        /* TOP MENU BAR */
+        #topbar {
+            position: fixed; top: 0; width: 100%; height: 32px; z-index: 50;
+            display: flex; justify-content: space-between; align-items: center; padding: 0 16px;
+            background: rgba(0,0,0,0.2); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255,255,255,0.05);
+            font-size: 12px; font-weight: 500;
+        }
+
+        /* WINDOW MANAGER */
+        .window {
+            position: absolute; display: flex; flex-direction: column;
+            border-radius: 12px; overflow: hidden; min-width: 360px; min-height: 240px;
+            opacity: 0; transform: scale(0.95) translateY(10px);
+            transition: opacity 0.2s, transform 0.25s cubic-bezier(0.19, 1, 0.22, 1);
+            box-shadow: 0 0 0 1px rgba(255,255,255,0.05), 0 30px 60px rgba(0,0,0,0.6);
+        }
+        .window.open { opacity: 1; transform: scale(1) translateY(0); }
+        .window.active { box-shadow: 0 0 0 1px rgba(255,255,255,0.15), 0 40px 80px rgba(0,0,0,0.8); }
+
+        .win-header {
+            height: 40px; display: flex; align-items: center; justify-content: space-between;
+            padding: 0 16px; background: rgba(20,20,22,0.8); backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .win-content { flex: 1; background: #0a0a0c; position: relative; }
+        .win-content iframe { width: 100%; height: 100%; border: none; background: #0a0a0c; }
+        .drag-shield { position: absolute; inset: 0; display: none; z-index: 50; }
+        .window.dragging .drag-shield { display: block; }
+
+        .win-controls { display: flex; gap: 8px; }
+        .win-btn { width: 12px; height: 12px; border-radius: 50%; cursor: pointer; position: relative; transition: 0.2s; }
+        .btn-close { background: #ff5f56; } .btn-min { background: #ffbd2e; } .btn-max { background: #27c93f; }
+        .win-controls:hover .win-btn::after { content: ''; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 10px; color: rgba(0,0,0,0.6); font-weight: 800; }
+        .win-controls:hover .btn-close::after { content: '×'; }
+        
+        /* LAUNCHPAD (START MENU) */
+        #launchpad {
+            position: fixed; inset: 0; z-index: 90; display: flex; flex-direction: column; align-items: center;
+            padding-top: 8%; opacity: 0; pointer-events: none; transition: 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
         #launchpad.active { opacity: 1; pointer-events: auto; }
-        .app-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 24px 32px; max-width: 900px; }
-        .app-item { display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; transition: 0.2s; }
-        .app-item:hover { transform: translateY(-5px) scale(1.05); }
-        .app-icon-lg { width: 64px; height: 64px; border-radius: 18px; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 20px rgba(0,0,0,0.3); font-size: 30px; color: white; transition: 0.2s; }
-        .app-label { font-size: 12px; font-weight: 500; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
 
-        /* MODALS */
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); z-index: 100; display: none; justify-content: center; align-items: center; }
-        .modal-overlay.active { display: flex; }
+        .search-bar {
+            width: 600px; height: 50px; border-radius: 25px; background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; padding: 0 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3); margin-bottom: 40px; transition: 0.2s;
+        }
+        .search-bar:focus-within { background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.3); width: 620px; }
+        .search-bar input { flex: 1; background: transparent; border: none; outline: none; color: white; font-size: 16px; margin-left: 10px; }
+
+        .app-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 24px 32px; max-width: 900px; }
+        
+        .app-item { display: flex; flex-direction: column; align-items: center; gap: 10px; cursor: pointer; transition: 0.2s; }
+        .app-item:hover { transform: translateY(-5px) scale(1.05); }
+        .app-icon-lg { 
+            width: 64px; height: 64px; border-radius: 18px; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3); font-size: 30px; color: white; transition: 0.2s;
+        }
+        .app-item:hover .app-icon-lg { box-shadow: 0 15px 30px rgba(0,0,0,0.5); }
+        .app-label { font-size: 12px; font-weight: 500; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
+
+        /* FLOATING DOCK */
+        #dock-container { position: fixed; bottom: 20px; width: 100%; display: flex; justify-content: center; z-index: 100; pointer-events: none; }
+        .dock {
+            display: flex; gap: 10px; padding: 10px; border-radius: 24px; pointer-events: auto;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.6); transition: 0.3s;
+        }
+        .dock-icon {
+            width: 50px; height: 50px; border-radius: 14px; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; position: relative; transition: 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+            background: rgba(255,255,255,0.05);
+        }
+        .dock-icon:hover { transform: scale(1.15) translateY(-5px); margin: 0 5px; background: rgba(255,255,255,0.1); }
+        .dock-icon:active { transform: scale(0.95); }
+        .dock-icon.active::after {
+            content: ''; position: absolute; bottom: -6px; width: 5px; height: 5px;
+            background: #fff; border-radius: 50%; box-shadow: 0 0 8px #fff;
+        }
+
+        /* CONTEXT MENU */
+        #context-menu {
+            position: absolute; width: 240px; display: none; flex-direction: column;
+            border-radius: 14px; padding: 6px; z-index: 9999;
+        }
+        .ctx-item {
+            padding: 10px 14px; font-size: 13px; font-weight: 500; border-radius: 8px; cursor: pointer;
+            display: flex; align-items: center; gap: 12px; transition: 0.1s; color: #e4e4e7;
+        }
+        .ctx-item:hover { background: #3b82f6; color: white; }
+
+        /* PERSONALIZATION MODAL */
+        #personalize-modal {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.95);
+            width: 450px; z-index: 10000; opacity: 0; pointer-events: none;
+            transition: 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+        }
+        #personalize-modal.active { opacity: 1; transform: translate(-50%, -50%) scale(1); pointer-events: auto; }
+        .p-input { width: 100%; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 10px; border-radius: 8px; outline: none; font-size: 13px; margin-top: 6px; }
+        .p-input:focus { border-color: #3b82f6; }
     </style>
 </head>
 <body>
 
-    <div id="desktop-bg" class="bg-blurred"></div>
-
-    <div id="screen-auth" class="screen active-screen items-center justify-center">
-        <div class="absolute top-10 left-10 cursor-pointer opacity-50 hover:opacity-100 transition" onclick="triggerAdmin()" title="Admin Access">
-            <i data-lucide="droplet" class="w-8 h-8 text-blue-500"></i>
-        </div>
-
-        <div class="lucid-glass p-10 w-[400px] rounded-2xl flex flex-col items-center">
-            <i data-lucide="user-circle" class="w-12 h-12 text-gray-400 mb-4"></i>
-            <h1 class="text-2xl font-bold mb-1">Lucid Account</h1>
-            <p class="text-gray-400 text-xs mb-6 uppercase tracking-widest">Login or Create Identity</p>
-
-            <div id="auth-error" class="text-red-400 text-xs mb-4 text-center hidden w-full bg-red-500/10 p-2 rounded"></div>
-
-            <input type="email" id="auth-email" class="l-input" placeholder="Real Email Address">
-            <input type="password" id="auth-pass" class="l-input" placeholder="Password">
-            
-            <button class="l-btn" onclick="loginUser()">Log In</button>
-            <button class="l-btn bg-zinc-800 hover:bg-zinc-700 mt-2" onclick="registerUser()">Create Account</button>
+    <div id="boot" class="fixed inset-0 bg-[#050505] z-[999] flex flex-col items-center justify-center transition-opacity duration-1000">
+        <h1 class="text-5xl font-bold tracking-[0.5em] text-white opacity-0 transition-opacity duration-1000" id="boot-text" style="text-shadow: 0 0 40px rgba(255,255,255,0.3);">LUCID</h1>
+        <div class="mt-8 w-48 h-0.5 bg-zinc-900 rounded-full overflow-hidden">
+            <div id="boot-bar" class="h-full bg-white w-0 transition-all duration-[1500ms] ease-in-out"></div>
         </div>
     </div>
 
-    <div id="screen-verify" class="screen items-center justify-center">
-        <div class="lucid-glass p-10 w-[450px] rounded-2xl flex flex-col items-center text-center">
-            <i data-lucide="mail-warning" class="w-16 h-16 text-yellow-500 mb-4"></i>
-            <h1 class="text-2xl font-bold mb-2">Verify Your Email</h1>
-            <p class="text-gray-300 text-sm mb-6">We sent a verification link to <span id="verify-email-display" class="font-bold text-blue-400"></span>. You must click the link in that email to unlock Lucid OS.</p>
-            
-            <button class="l-btn bg-green-600 hover:bg-green-500" onclick="checkVerification()">I Have Verified My Email</button>
-            <button class="l-btn bg-zinc-800 hover:bg-zinc-700 mt-2" onclick="resendVerification()">Resend Link</button>
-            <button class="text-red-400 text-xs mt-4 hover:underline" onclick="logoutOS()">Log out</button>
-        </div>
+    <div id="desktop" onclick="handleDesktopClick(event)" oncontextmenu="openContextMenu(event)"></div>
+
+    <div id="context-menu" class="lucid-glass">
+        <div class="ctx-item" onclick="refreshKernel()"><i data-lucide="refresh-cw" class="w-4 h-4"></i> Refresh Kernel</div>
+        <div class="h-px bg-white/10 my-1 mx-2"></div>
+        <div class="ctx-item" onclick="openPersonalize()"><i data-lucide="image" class="w-4 h-4"></i> Personalize The Screen</div>
+        <div class="ctx-item" onclick="openFullscreen()"><i data-lucide="monitor" class="w-4 h-4"></i> Enter Fullscreen</div>
     </div>
 
-    <div id="screen-os" class="screen">
-        <div id="topbar">
-            <div class="flex items-center gap-4 h-full">
-                <div class="cursor-pointer hover:text-blue-400 font-bold"><i data-lucide="droplet" class="w-3 h-3 inline"></i> LUCID</div>
-            </div>
-            <div class="flex items-center gap-4 h-full">
-                <span id="user-display" class="text-blue-400 font-bold">User</span>
-                <i data-lucide="wifi" class="w-3.5 h-3.5"></i>
-                <button onclick="logoutOS()" class="ml-2 text-red-400 hover:text-red-300 text-xs font-bold">Log Out</button>
-            </div>
+    <div id="personalize-modal" class="lucid-glass rounded-2xl p-6 shadow-2xl">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-lg font-bold">Personalize The Screen</h2>
+            <i data-lucide="x" class="w-5 h-5 cursor-pointer hover:text-red-400 transition" onclick="closePersonalize()"></i>
         </div>
-
-        <div id="launchpad" class="active">
-            <div class="app-grid" id="app-grid-container">
-                <div class="app-item" onclick="openStore()"><div class="app-icon-lg bg-white shadow-[0_0_20px_rgba(255,255,255,0.4)]"><i data-lucide="shopping-bag" class="text-blue-600"></i></div><span class="app-label">Lucid Store</span></div>
-                <div class="app-item" onclick="alert('Settings opening...')"><div class="app-icon-lg bg-gray-600"><i data-lucide="settings-2"></i></div><span class="app-label">Settings</span></div>
-                
-                <div id="dynamic-studio" class="contents"></div>
-            </div>
-        </div>
-    </div>
-
-    <div id="modal-store" class="modal-overlay">
-        <div class="w-[800px] h-[600px] bg-[#0a0a0c] border border-white/10 rounded-2xl flex flex-col overflow-hidden relative">
-            <div class="h-14 bg-zinc-900 border-b border-white/10 flex items-center justify-between px-6">
-                <div class="flex items-center gap-2 font-bold text-white"><i data-lucide="shopping-bag" class="text-blue-400"></i> Lucid Store</div>
-                <button class="text-gray-400 hover:text-white" onclick="document.getElementById('modal-store').classList.remove('active')"><i data-lucide="x"></i></button>
-            </div>
-            
-            <div class="p-8 overflow-y-auto flex-1">
-                <div class="w-full bg-gradient-to-r from-indigo-900 to-purple-900 rounded-2xl p-8 flex justify-between items-center border border-purple-500/30 shadow-[0_10px_30px_rgba(168,85,247,0.2)] mb-8">
-                    <div>
-                        <div class="text-[10px] font-bold tracking-widest text-purple-300 uppercase mb-2">Developer Program</div>
-                        <h2 class="text-3xl font-bold text-white mb-2">Introducing Luco Studio</h2>
-                        <p class="text-sm text-gray-300 max-w-md">Build, compile, and publish directly to the Lucid Ecosystem. Developer accounts are strictly invite-only or by application.</p>
-                        
-                        <div id="apply-status-msg" class="mt-4 text-xs font-bold text-yellow-400 hidden">Your application is currently pending review.</div>
-                        <div id="apply-approved-msg" class="mt-4 text-xs font-bold text-green-400 hidden">You are an approved developer. Studio unlocked.</div>
-                    </div>
-                    <button id="btn-open-apply" class="bg-white text-black px-8 py-3 rounded-full font-bold hover:bg-gray-200 transition" onclick="openApplyForm()">Apply Now</button>
-                </div>
-                
-                <h3 class="text-lg font-bold mb-4">Top Free Apps</h3>
-                <div class="grid grid-cols-2 gap-4 text-sm text-gray-500">
-                    <div class="p-4 bg-zinc-900 rounded-xl border border-white/5">Nexus API Client</div>
-                    <div class="p-4 bg-zinc-900 rounded-xl border border-white/5">AURA Synthesizer</div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div id="modal-apply" class="modal-overlay">
-        <div class="w-[500px] bg-[#121215] border border-white/10 rounded-2xl p-8 relative">
-            <button class="absolute top-6 right-6 text-gray-400 hover:text-white" onclick="document.getElementById('modal-apply').classList.remove('active')"><i data-lucide="x"></i></button>
-            <h2 class="text-2xl font-bold mb-1">Developer Application</h2>
-            <p class="text-xs text-gray-400 mb-6">Request access to Luco Studio.</p>
-
-            <input type="text" id="app-name" class="l-input" placeholder="Full Name">
-            <input type="text" id="app-devname" class="l-input" placeholder="Developer / Studio Name">
-            <input type="text" id="app-exp" class="l-input" placeholder="Years of Experience (e.g., 3 Years)">
-            <input type="text" id="app-stack" class="l-input" placeholder="Tech Stack (e.g., JS, React, Python)">
-            
-            <select id="app-type" class="l-input">
-                <option value="" disabled selected>Primary Focus</option>
-                <option value="Applications">Applications</option>
-                <option value="Games">Games</option>
-                <option value="Both">Both</option>
-            </select>
-
-            <button class="l-btn mt-4" onclick="submitApplication()">Submit Application</button>
-        </div>
-    </div>
-
-    <div id="admin-panel" class="screen bg-[#0a0a0c] !z-[200]">
-        <div class="h-14 bg-zinc-900 border-b border-white/10 flex items-center justify-between px-6">
-            <div class="flex items-center gap-2 text-red-500 font-bold"><i data-lucide="shield-alert"></i> LUCID OVERSEER</div>
-            <button class="text-xs font-bold text-gray-400 hover:text-white" onclick="document.getElementById('admin-panel').classList.remove('active-screen')">Exit Terminal</button>
-        </div>
-        <div class="p-10 max-w-5xl mx-auto w-full">
-            <h2 class="text-2xl font-bold mb-6">Pending Applications</h2>
-            <div id="admin-list" class="grid gap-4">
-                <p class="text-zinc-500 text-sm">Fetching applications...</p>
-            </div>
-        </div>
-    </div>
-
-    <script type="module">
-        lucide.createIcons();
         
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, collection, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+        <div class="mb-5">
+            <label class="text-xs text-gray-400 font-bold uppercase tracking-wide">Wallpaper URL (PNG/JPG)</label>
+            <input type="text" id="inp-wall" class="p-input" placeholder="https://example.com/image.jpg">
+        </div>
+        
+        <div class="mb-6">
+            <label class="text-xs text-gray-400 font-bold uppercase tracking-wide">Custom Cursor URL (PNG/JPG)</label>
+            <input type="text" id="inp-cursor" class="p-input" placeholder="https://example.com/cursor.png">
+        </div>
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyBhkwFbMlD7DJPtNPV2cBfb3uwlvBSm7h0",
-            authDomain: "lucide-os.firebaseapp.com",
-            projectId: "lucide-os",
-            storageBucket: "lucide-os.firebasestorage.app",
-            messagingSenderId: "211467529543",
-            appId: "1:211467529543:web:fc5c65a89aef44c4823062",
-            measurementId: "G-HJ5DWFL2S8"
+        <div class="flex justify-end gap-3">
+            <button class="px-4 py-2 rounded-lg text-sm font-bold bg-white/5 hover:bg-white/10 transition" onclick="resetPersonalize()">Reset Default</button>
+            <button class="px-4 py-2 rounded-lg text-sm font-bold bg-blue-600 hover:bg-blue-500 transition shadow-[0_0_15px_rgba(59,130,246,0.5)]" onclick="applyPersonalize()">Apply Changes</button>
+        </div>
+    </div>
+
+    <div id="desktop-widget">
+        <div id="dw-time">12:00</div>
+        <div id="dw-date">Monday, January 1</div>
+    </div>
+
+    <div id="topbar">
+        <div class="flex items-center gap-4 h-full pointer-events-auto">
+            <div class="cursor-pointer hover:text-blue-400 transition flex items-center gap-1 font-bold" onclick="showToast('Lucid OS Enterprise')">
+                <i data-lucide="droplet" class="w-3 h-3"></i> LUCID
+            </div>
+            <div class="cursor-pointer hover:text-gray-300 transition" onclick="openPersonalize()">Edit</div>
+            <div class="cursor-pointer hover:text-gray-300 transition">View</div>
+            <div class="cursor-pointer hover:text-gray-300 transition">Help</div>
+        </div>
+        <div class="flex items-center gap-4 h-full pointer-events-auto">
+            <span class="text-blue-400 font-bold mr-2" id="user-name">SpydeY</span>
+            <i data-lucide="wifi" class="w-3.5 h-3.5"></i>
+            <i data-lucide="battery-medium" class="w-4 h-4"></i>
+            <div id="tb-time">12:00 AM</div>
+        </div>
+    </div>
+
+    <div id="windows" class="absolute inset-0 overflow-hidden pointer-events-none mt-8"></div>
+
+    <div id="launchpad" onclick="if(event.target === this) toggleStart()">
+        <div class="search-bar lucid-glass">
+            <i data-lucide="search" class="w-5 h-5 text-gray-400"></i>
+            <input type="text" id="app-search" placeholder="Search apps, files, and commands..." onkeyup="filterApps()">
+        </div>
+        
+        <div class="app-grid" id="app-grid-container">
+            <div class="app-item" data-name="store" onclick="launch('store', 'Lucid Store', 'app/store.html', 1000, 700)">
+                <div class="app-icon-lg bg-white shadow-[0_0_20px_rgba(255,255,255,0.4)]"><i data-lucide="shopping-bag" class="text-blue-600"></i></div>
+                <span class="app-label">Store</span>
+            </div>
+
+            <div class="app-item" data-name="settings" onclick="launch('settings', 'Settings', 'app/settings.html', 700, 500)">
+                <div class="app-icon-lg bg-gray-600"><i data-lucide="settings-2"></i></div>
+                <span class="app-label">Settings</span>
+            </div>
+
+            <div class="app-item" data-name="drive" onclick="launch('drive', 'Lucid Drive', 'app/drive.html', 850, 600)">
+                <div class="app-icon-lg bg-zinc-800 border border-blue-500/50 shadow-[0_0_20px_rgba(59,130,246,0.3)]"><i data-lucide="hard-drive" class="text-blue-400"></i></div>
+                <span class="app-label">Drive</span>
+            </div>
+
+            <div class="app-item" data-name="monitor" onclick="launch('monitor', 'Activity Monitor', 'app/monitor.html', 900, 600)">
+                <div class="app-icon-lg bg-zinc-900 border border-green-500/50 shadow-[0_0_20px_rgba(16,185,129,0.3)]"><i data-lucide="activity" class="text-green-400"></i></div>
+                <span class="app-label">Monitor</span>
+            </div>
+
+            <div class="app-item" data-name="terminal" onclick="launch('terminal', 'Lucid Terminal', 'app/terminal.html', 700, 450)">
+                <div class="app-icon-lg bg-black border border-green-500/30 shadow-[0_0_20px_rgba(16,185,129,0.2)]"><i data-lucide="terminal" class="text-green-500"></i></div>
+                <span class="app-label">Terminal</span>
+            </div>
+
+            <div class="app-item" data-name="nexus" onclick="launch('nexus', 'Nexus API Client', 'app/nexus.html', 900, 650)">
+                <div class="app-icon-lg bg-zinc-900 border border-blue-500/50 shadow-[0_0_20px_rgba(59,130,246,0.3)]"><i data-lucide="network" class="text-blue-400"></i></div>
+                <span class="app-label">Nexus</span>
+            </div>
+
+            <div class="app-item" data-name="lunotes" onclick="launch('lunotes', 'Lunotes', 'app/lunotes.html', 950, 650)">
+                <div class="app-icon-lg bg-zinc-900 border border-blue-500/50 shadow-[0_0_20px_rgba(59,130,246,0.3)]"><i data-lucide="book-open" class="text-blue-400"></i></div>
+                <span class="app-label">Lunotes</span>
+            </div>
+
+            <div class="app-item" data-name="aura" onclick="launch('aura', 'AURA Studio', 'app/aura.html', 800, 600)">
+                <div class="app-icon-lg bg-gradient-to-tr from-cyan-500 to-blue-600 shadow-[0_0_20px_rgba(59,130,246,0.4)]"><i data-lucide="waves"></i></div>
+                <span class="app-label">AURA</span>
+            </div>
+
+            <div class="app-item" data-name="luma" onclick="launch('luma', 'Luma Palette', 'app/lumixpro.html', 900, 650)">
+                <div class="app-icon-lg bg-purple-600"><i data-lucide="palette"></i></div>
+                <span class="app-label">Luma</span>
+            </div>
+
+            <div class="app-item" data-name="typelab" onclick="launch('typelab', 'Type Lab', 'app/typex.html', 800, 500)">
+                <div class="app-icon-lg bg-emerald-600"><i data-lucide="keyboard"></i></div>
+                <span class="app-label">Type Lab</span>
+            </div>
+
+            <div class="app-item" data-name="defense" onclick="launch('defense', 'Cyber Defense', 'arcade/defense.html', 1000, 700)">
+                <div class="app-icon-lg bg-indigo-900 border border-indigo-500/50"><i data-lucide="shield-alert" class="text-indigo-400"></i></div>
+                <span class="app-label">Defense</span>
+            </div>
+
+            <div class="app-item" data-name="vortex" onclick="launch('vortex', 'Vortex', 'arcade/vortex.html', 700, 700)">
+                <div class="app-icon-lg bg-black border border-purple-500"><i data-lucide="hexagon" class="text-purple-400"></i></div>
+                <span class="app-label">Vortex</span>
+            </div>
+            
+            <div class="app-item" data-name="chroma" onclick="launch('chroma', 'Chroma Lab', 'arcade/chroma.html', 600, 700)">
+                <div class="app-icon-lg bg-gradient-to-br from-indigo-500 to-purple-600"><i data-lucide="flask-conical" class="text-white"></i></div>
+                <span class="app-label">Chroma</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="dock-container">
+        <div class="dock lucid-glass" id="main-dock">
+            <div class="dock-icon" onclick="toggleStart()" title="Launchpad">
+                <svg viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-blue-500"><path d="M4 4h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4zM4 10h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4zM4 16h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4z"/></svg>
+            </div>
+            <div class="w-px h-8 bg-white/10 my-auto mx-1"></div>
+            <div id="task-apps" class="flex gap-2"></div>
+        </div>
+    </div>
+
+    <div id="toast-area" class="fixed bottom-24 right-4 z-[999] flex flex-col gap-2"></div>
+
+    <script>
+        // --- ⚙️ SYSTEM CONFIGURATION & PERSONALIZATION ---
+        const DEFAULT_CONFIG = {
+            wall: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop",
+            cursor: "auto"
         };
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-
-        let currentUserDoc = null;
-
-        // UI HELPERS
-        const switchScreen = (screenId) => {
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active-screen'));
-            document.getElementById(`screen-${screenId}`).classList.add('active-screen');
-            if(screenId === 'os') document.getElementById('desktop-bg').classList.remove('bg-blurred');
-            else document.getElementById('desktop-bg').classList.add('bg-blurred');
-        };
-
-        const showError = (msg) => {
-            const errEl = document.getElementById('auth-error');
-            errEl.innerText = msg; errEl.classList.remove('hidden');
-        };
-
-        // --- AUTH: CREATE & VERIFY ---
-        window.registerUser = async () => {
-            const email = document.getElementById('auth-email').value;
-            const pass = document.getElementById('auth-pass').value;
-            try {
-                const cred = await createUserWithEmailAndPassword(auth, email, pass);
-                
-                // Send Verification Email
-                await sendEmailVerification(cred.user);
-                
-                // Create Basic User Doc
-                await setDoc(doc(db, "users", cred.user.uid), {
-                    email: cred.user.email,
-                    role: 'user', // 'user', 'pending_dev', 'developer'
-                    applicationData: null,
-                    createdAt: new Date()
-                });
-                
-                // Auth Observer will handle UI routing to verification screen
-            } catch (error) { showError(error.message); }
-        };
-
-        window.loginUser = async () => {
-            const email = document.getElementById('auth-email').value;
-            const pass = document.getElementById('auth-pass').value;
-            try { await signInWithEmailAndPassword(auth, email, pass); } 
-            catch (error) { showError(error.message); }
-        };
-
-        window.checkVerification = async () => {
-            if(auth.currentUser) {
-                await auth.currentUser.reload(); // Force refresh token
-                if(auth.currentUser.emailVerified) {
-                    alert("Email Verified! Welcome to Lucid.");
-                    window.location.reload(); // Reload to trigger auth state correctly
-                } else {
-                    alert("Still not verified. Please check your spam folder and click the link.");
+        // --- SYSTEM INIT ---
+        window.onload = () => {
+            lucide.createIcons();
+            loadPersonalization();
+            startClock();
+            
+            // Check for username updates from Settings
+            window.addEventListener('message', (e) => {
+                if (e.data === 'user_updated') {
+                    const savedUser = localStorage.getItem('vertex_user') || 'SpydeY';
+                    document.getElementById('user-name').innerText = savedUser;
                 }
-            }
+            });
+            const savedUser = localStorage.getItem('vertex_user') || 'SpydeY';
+            document.getElementById('user-name').innerText = savedUser;
+
+            // Boot Animation
+            setTimeout(() => {
+                document.getElementById('boot-text').style.opacity = '1';
+                document.getElementById('boot-bar').style.width = '100%';
+            }, 300);
+            
+            setTimeout(() => {
+                const boot = document.getElementById('boot');
+                boot.style.opacity = '0';
+                setTimeout(() => {
+                    boot.remove();
+                    showToast('Welcome to Lucid OS', 'droplet');
+                }, 1000);
+            }, 2000);
         };
 
-        window.resendVerification = async () => {
-            if(auth.currentUser) {
-                await sendEmailVerification(auth.currentUser);
-                alert("Verification link sent again!");
-            }
-        };
-
-        window.logoutOS = () => { signOut(auth); };
-
-        // --- AUTH STATE OBSERVER ---
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                if (!user.emailVerified) {
-                    document.getElementById('verify-email-display').innerText = user.email;
-                    switchScreen('verify');
-                    return;
-                }
-
-                // User is verified, load OS
-                document.getElementById('user-display').innerText = user.email.split('@')[0];
-                switchScreen('os');
-
-                // Check Firestore for Developer Status
-                const docRef = await getDoc(doc(db, "users", user.uid));
-                if (docRef.exists()) {
-                    currentUserDoc = docRef.data();
-                    
-                    // Inject Studio if approved
-                    if (currentUserDoc.role === 'developer') {
-                        document.getElementById('dynamic-studio').innerHTML = `
-                            <div class="app-item" onclick="alert('Launching Luco Studio IDE...')">
-                                <div class="app-icon-lg bg-zinc-900 border border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.4)]"><i data-lucide="code-2" class="text-purple-400"></i></div>
-                                <span class="app-label text-purple-300">Luco Studio</span>
-                            </div>
-                        `;
-                        lucide.createIcons();
-                    }
-                }
+        // --- PERSONALIZATION ENGINE ---
+        function loadPersonalization() {
+            const savedWall = localStorage.getItem('lucid_wall') || DEFAULT_CONFIG.wall;
+            const savedCursor = localStorage.getItem('lucid_cursor') || DEFAULT_CONFIG.cursor;
+            
+            document.getElementById('desktop').style.backgroundImage = `url('${savedWall}')`;
+            document.getElementById('inp-wall').value = savedWall === DEFAULT_CONFIG.wall ? '' : savedWall;
+            
+            if(savedCursor !== "auto") {
+                document.body.style.cursor = `url('${savedCursor}'), auto`;
+                document.getElementById('inp-cursor').value = savedCursor;
             } else {
-                currentUserDoc = null;
-                switchScreen('auth');
+                document.body.style.cursor = "auto";
+                document.getElementById('inp-cursor').value = '';
             }
-        });
-
-        // --- STORE & APPLICATION FLOW ---
-        window.openStore = () => {
-            document.getElementById('modal-store').classList.add('active');
-            
-            // Adjust Apply UI based on status
-            const btn = document.getElementById('btn-open-apply');
-            const pendingMsg = document.getElementById('apply-status-msg');
-            const approvedMsg = document.getElementById('apply-approved-msg');
-            
-            if (currentUserDoc) {
-                if (currentUserDoc.role === 'pending_dev') {
-                    btn.style.display = 'none';
-                    pendingMsg.classList.remove('hidden');
-                } else if (currentUserDoc.role === 'developer') {
-                    btn.style.display = 'none';
-                    approvedMsg.classList.remove('hidden');
-                }
-            }
-        };
-
-        window.openApplyForm = () => {
-            document.getElementById('modal-apply').classList.add('active');
-        };
-
-        window.submitApplication = async () => {
-            const name = document.getElementById('app-name').value;
-            const devname = document.getElementById('app-devname').value;
-            const exp = document.getElementById('app-exp').value;
-            const stack = document.getElementById('app-stack').value;
-            const type = document.getElementById('app-type').value;
-
-            if(!name || !devname || !exp || !stack || !type) {
-                alert("Please fill out the entire application."); return;
-            }
-
-            if(auth.currentUser) {
-                const appData = { name, devname, exp, stack, type, submittedAt: new Date() };
-                
-                await updateDoc(doc(db, "users", auth.currentUser.uid), {
-                    role: 'pending_dev',
-                    applicationData: appData
-                });
-
-                alert("Application Submitted Successfully!");
-                document.getElementById('modal-apply').classList.remove('active');
-                
-                // Update local memory so UI changes immediately
-                currentUserDoc.role = 'pending_dev'; 
-                openStore(); // Refresh store UI
-            }
-        };
-
-        // --- ADMIN OVERSEER ---
-        window.triggerAdmin = () => {
-            const pass = prompt("ROOT ACCESS REQUIRED:");
-            if (pass === "lucide@latestpass") {
-                document.getElementById('admin-panel').classList.add('active-screen');
-                loadAdminPanel();
-            } else if (pass !== null) { alert("ACCESS DENIED."); }
-        };
-
-        async function loadAdminPanel() {
-            const adminList = document.getElementById('admin-list');
-            try {
-                const querySnapshot = await getDocs(collection(db, "users"));
-                let html = '';
-                querySnapshot.forEach((docSnap) => {
-                    const data = docSnap.data();
-                    if (data.role === 'pending_dev' && data.applicationData) {
-                        const app = data.applicationData;
-                        html += `
-                            <div class="lucid-glass p-6 rounded-xl flex flex-col gap-4">
-                                <div class="flex justify-between items-start border-b border-white/10 pb-4">
-                                    <div>
-                                        <div class="font-bold text-lg text-blue-400">${app.devname}</div>
-                                        <div class="text-sm text-gray-400">${data.email}</div>
-                                    </div>
-                                    <div class="flex gap-2">
-                                        <button class="bg-green-600 hover:bg-green-500 text-white px-6 py-2 text-xs rounded font-bold" onclick="decideDev('${docSnap.id}', 'developer')">Accept</button>
-                                        <button class="bg-red-600 hover:bg-red-500 text-white px-6 py-2 text-xs rounded font-bold" onclick="decideDev('${docSnap.id}', 'user')">Decline</button>
-                                    </div>
-                                </div>
-                                <div class="grid grid-cols-2 gap-4 text-sm">
-                                    <div><span class="text-gray-500 font-bold">Applicant:</span> ${app.name}</div>
-                                    <div><span class="text-gray-500 font-bold">Experience:</span> ${app.exp}</div>
-                                    <div><span class="text-gray-500 font-bold">Stack:</span> <span class="font-mono text-purple-400">${app.stack}</span></div>
-                                    <div><span class="text-gray-500 font-bold">Focus:</span> ${app.type}</div>
-                                </div>
-                            </div>
-                        `;
-                    }
-                });
-                adminList.innerHTML = html || '<p class="text-green-500 font-mono text-sm">No pending applications in the queue.</p>';
-            } catch (e) { adminList.innerHTML = `<p class="text-red-500">Error: ${e.message}</p>`; }
         }
 
-        window.decideDev = async (uid, newRole) => {
-            await updateDoc(doc(db, "users", uid), { role: newRole });
-            alert(newRole === 'developer' ? "Developer Approved." : "Application Declined.");
-            loadAdminPanel();
-        };
+        function applyPersonalize() {
+            const wallUrl = document.getElementById('inp-wall').value.trim();
+            const cursorUrl = document.getElementById('inp-cursor').value.trim();
 
+            if(wallUrl) {
+                localStorage.setItem('lucid_wall', wallUrl);
+                document.getElementById('desktop').style.backgroundImage = `url('${wallUrl}')`;
+            }
+            if(cursorUrl) {
+                localStorage.setItem('lucid_cursor', cursorUrl);
+                document.body.style.cursor = `url('${cursorUrl}'), auto`;
+            }
+            
+            closePersonalize();
+            showToast('Screen Personalized Successfully', 'image');
+        }
+
+        function resetPersonalize() {
+            localStorage.removeItem('lucid_wall');
+            localStorage.removeItem('lucid_cursor');
+            loadPersonalization();
+            closePersonalize();
+            showToast('Restored Default Theme', 'refresh-cw');
+        }
+
+        function openPersonalize() {
+            closeAllMenus();
+            document.getElementById('personalize-modal').classList.add('active');
+        }
+
+        function closePersonalize() {
+            document.getElementById('personalize-modal').classList.remove('active');
+        }
+
+        // --- CONTEXT MENU ---
+        function openContextMenu(e) {
+            e.preventDefault();
+            closeAllMenus();
+            const menu = document.getElementById('context-menu');
+            menu.style.display = 'flex';
+            
+            let x = e.pageX;
+            let y = e.pageY;
+            if (x + 240 > window.innerWidth) x = window.innerWidth - 250;
+            if (y + 150 > window.innerHeight) y = window.innerHeight - 160;
+            
+            menu.style.left = `${x}px`;
+            menu.style.top = `${y}px`;
+        }
+
+        function refreshKernel() {
+            document.getElementById('context-menu').style.display = 'none';
+            const desk = document.getElementById('desktop');
+            desk.style.transform = "scale(0.98)";
+            desk.style.opacity = "0.8";
+            setTimeout(() => {
+                desk.style.transform = "scale(1)";
+                desk.style.opacity = "1";
+                showToast('Kernel Refreshed', 'cpu');
+            }, 300);
+        }
+
+        function openFullscreen() {
+            document.getElementById('context-menu').style.display = 'none';
+            if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+            else if (document.exitFullscreen) document.exitFullscreen();
+        }
+
+        // --- TIME & WIDGETS ---
+        function startClock() {
+            const update = () => {
+                const now = new Date();
+                const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const dateStr = now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
+                
+                document.getElementById('tb-time').innerText = timeStr;
+                document.getElementById('dw-time').innerText = timeStr;
+                document.getElementById('dw-date').innerText = dateStr;
+            };
+            setInterval(update, 1000);
+            update();
+        }
+
+        // --- UI CONTROLS ---
+        function handleDesktopClick(e) {
+            if(e.button === 0) closeAllMenus(); 
+        }
+
+        function closeAllMenus() {
+            document.getElementById('launchpad').classList.remove('active');
+            document.getElementById('context-menu').style.display = 'none';
+            document.getElementById('desktop').classList.remove('blurred');
+            document.getElementById('desktop-widget').style.opacity = '1';
+        }
+
+        function toggleStart() {
+            const menu = document.getElementById('launchpad');
+            const desk = document.getElementById('desktop');
+            const widget = document.getElementById('desktop-widget');
+            const isActive = menu.classList.contains('active');
+            
+            closeAllMenus();
+            if (!isActive) {
+                menu.classList.add('active');
+                desk.classList.add('blurred');
+                widget.style.opacity = '0';
+                setTimeout(() => document.getElementById('app-search').focus(), 100);
+            }
+        }
+
+        function showToast(msg, iconName = 'info') {
+            const area = document.getElementById('toast-area');
+            const toast = document.createElement('div');
+            toast.className = 'bg-zinc-800 border border-white/10 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 text-sm font-medium transform transition-all duration-300 translate-y-10 opacity-0';
+            toast.innerHTML = `<i data-lucide="${iconName}" class="w-4 h-4 text-blue-400"></i> ${msg}`;
+            area.appendChild(toast);
+            lucide.createIcons();
+            setTimeout(() => { toast.classList.remove('translate-y-10', 'opacity-0'); }, 10);
+            setTimeout(() => {
+                toast.classList.add('translate-y-10', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function filterApps() {
+            const query = document.getElementById('app-search').value.toLowerCase();
+            const apps = document.querySelectorAll('.app-item');
+            apps.forEach(app => {
+                const name = app.dataset.name + " " + app.querySelector('.app-label').innerText.toLowerCase();
+                app.style.display = name.includes(query) ? 'flex' : 'none';
+            });
+        }
+
+        // --- AUDIO ---
+        function playSystemSound() {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(1200, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.01, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.15);
+        }
+
+        // --- WINDOW KERNEL ---
+        let zIndex = 100;
+        let activeApps = {};
+
+        function launch(key, title, url, w, h) {
+            playSystemSound();
+            closeAllMenus();
+            
+            if (activeApps[key]) {
+                const win = activeApps[key].window;
+                if (!win.classList.contains('open')) restoreWindow(key);
+                else {
+                    if(win.classList.contains('active')) minimizeWindow(key);
+                    else focusWindow(win);
+                }
+                return;
+            }
+            createWindow(key, title, url, w, h);
+            addToTaskbar(key);
+        }
+
+        function createWindow(key, title, url, w, h) {
+            zIndex++;
+            const win = document.createElement('div');
+            win.className = 'window lucid-glass pointer-events-auto';
+            win.id = `win-${key}`;
+            
+            const x = Math.max(0, (window.innerWidth/2) - (w/2) + (Math.random()*40-20));
+            const y = Math.max(40, (window.innerHeight/2) - (h/2) + (Math.random()*40-20));
+
+            win.style.width = `${w}px`;
+            win.style.height = `${h}px`;
+            win.style.left = `${x}px`;
+            win.style.top = `${y}px`;
+            win.style.zIndex = zIndex;
+
+            win.innerHTML = `
+                <div class="win-header" onmousedown="startDrag(event, '${key}')" ondblclick="maximizeWindow('${key}')">
+                    <div class="flex items-center gap-2 pointer-events-none">
+                        <span class="text-xs font-semibold text-gray-200 tracking-wide">${title}</span>
+                    </div>
+                    <div class="win-controls" onmousedown="event.stopPropagation()">
+                        <div class="win-btn btn-min" onclick="minimizeWindow('${key}')"></div>
+                        <div class="win-btn btn-max" onclick="maximizeWindow('${key}')"></div>
+                        <div class="win-btn btn-close" onclick="closeWindow('${key}')"></div>
+                    </div>
+                </div>
+                <div class="win-content">
+                    <div class="drag-shield"></div>
+                    <iframe src="${url}"></iframe>
+                </div>
+            `;
+
+            win.addEventListener('mousedown', () => focusWindow(win));
+            document.getElementById('windows').appendChild(win);
+            requestAnimationFrame(() => win.classList.add('open'));
+            
+            activeApps[key] = { window: win };
+            focusWindow(win);
+        }
+
+        function addToTaskbar(key) {
+            const bar = document.getElementById('task-apps');
+            const icon = document.createElement('div');
+            icon.className = 'dock-icon active';
+            icon.id = `task-${key}`;
+            icon.onclick = () => launch(key);
+            
+            const appItem = document.querySelector(`.app-item[data-name="${key}"] .app-icon-lg`);
+            let srcIcon = appItem ? appItem.cloneNode(true) : document.createElement('div');
+            
+            srcIcon.className = "w-full h-full flex items-center justify-center text-[18px]";
+            srcIcon.style.boxShadow = "none";
+            
+            icon.appendChild(srcIcon);
+            bar.appendChild(icon);
+        }
+
+        function focusWindow(win) {
+            zIndex++;
+            win.style.zIndex = zIndex;
+            document.querySelectorAll('.window').forEach(w => w.classList.remove('active'));
+            win.classList.add('active');
+        }
+
+        function closeWindow(key) {
+            const win = activeApps[key].window;
+            win.classList.remove('open');
+            setTimeout(() => {
+                win.remove();
+                document.getElementById(`task-${key}`)?.remove();
+                delete activeApps[key];
+            }, 250);
+        }
+
+        function minimizeWindow(key) {
+            const win = activeApps[key].window;
+            win.classList.remove('open');
+            win.style.pointerEvents = 'none';
+            document.getElementById(`task-${key}`)?.classList.remove('active');
+        }
+
+        function restoreWindow(key) {
+            const win = activeApps[key].window;
+            win.classList.add('open');
+            win.style.pointerEvents = 'auto';
+            document.getElementById(`task-${key}`)?.classList.add('active');
+            focusWindow(win);
+        }
+
+        function maximizeWindow(key) {
+            const win = activeApps[key].window;
+            focusWindow(win);
+            if(win.dataset.max === 'true') {
+                win.style.width = win.dataset.w;
+                win.style.height = win.dataset.h;
+                win.style.left = win.dataset.x;
+                win.style.top = win.dataset.y;
+                win.style.borderRadius = "12px";
+                win.dataset.max = 'false';
+            } else {
+                win.dataset.w = win.style.width;
+                win.dataset.h = win.style.height;
+                win.dataset.x = win.style.left;
+                win.dataset.y = win.style.top;
+                win.style.width = '100%';
+                win.style.height = 'calc(100% - 32px)'; 
+                win.style.left = '0';
+                win.style.top = '32px';
+                win.style.borderRadius = "0";
+                win.dataset.max = 'true';
+            }
+        }
+
+        // --- DRAG PHYSICS ---
+        let isDragging = false, dragWin = null, offset = {x:0, y:0};
+
+        function startDrag(e, key) {
+            const win = activeApps[key].window;
+            if(win.dataset.max === 'true') return;
+            isDragging = true;
+            dragWin = win;
+            focusWindow(win);
+            win.classList.add('dragging');
+            const rect = win.getBoundingClientRect();
+            offset.x = e.clientX - rect.left;
+            offset.y = e.clientY - rect.top;
+            document.addEventListener('mousemove', onDrag);
+            document.addEventListener('mouseup', stopDrag);
+        }
+
+        function onDrag(e) {
+            if(!isDragging) return;
+            let x = e.clientX - offset.x;
+            let y = e.clientY - offset.y;
+            if(y < 32) y = 32; 
+            dragWin.style.left = `${x}px`;
+            dragWin.style.top = `${y}px`;
+        }
+
+        function stopDrag() {
+            isDragging = false;
+            if(dragWin) dragWin.classList.remove('dragging');
+            dragWin = null;
+            document.removeEventListener('mousemove', onDrag);
+            document.removeEventListener('mouseup', stopDrag);
+        }
     </script>
 </body>
 </html>
