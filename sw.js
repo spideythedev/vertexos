@@ -1,12 +1,29 @@
-const CACHE_NAME = 'lucid-os-v1';
+// Bump this to v3 to force the phone to download the new files
+const CACHE_NAME = 'lucid-os-v3'; 
+
 const ASSETS = [
     './index.html',
-    './manifest.json'
+    './manifest.json',
+    './logo-192.jpg',
+    './logo-512.jpg'
 ];
 
 self.addEventListener('install', (e) => {
+    self.skipWaiting();
     e.waitUntil(
         caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+    );
+});
+
+self.addEventListener('activate', (e) => {
+    e.waitUntil(
+        caches.keys().then((keyList) => {
+            return Promise.all(keyList.map((key) => {
+                if (key !== CACHE_NAME) {
+                    return caches.delete(key);
+                }
+            }));
+        })
     );
 });
 
